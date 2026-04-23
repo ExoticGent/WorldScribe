@@ -2,21 +2,23 @@ import 'package:flutter/foundation.dart';
 
 import '../models/character.dart';
 import '../models/world.dart';
+import 'worldscribe_data_service.dart';
 
-/// Simple in-memory data store used during the mock-data phase of the
-/// MVP. Notifies listeners whenever worlds or characters change, so
-/// screens can rebuild with `ListenableBuilder`.
+/// In-memory implementation of [WorldscribeDataService] used during the
+/// mock-data phase of the MVP. Notifies listeners whenever worlds or
+/// characters change, so screens can rebuild with `ListenableBuilder`.
 ///
-/// This class intentionally mirrors the surface area we'll want later
-/// against Firestore (list/add/update/delete) so the swap stays small.
-class DataService extends ChangeNotifier {
-  DataService._() {
+/// The public surface intentionally mirrors the Firestore-backed
+/// [FirestoreDataService] so the swap stays small — the service locator
+/// is the only thing that needs to change.
+class InMemoryDataService extends WorldscribeDataService {
+  InMemoryDataService._() {
     _seedMockData();
   }
 
-  /// Singleton accessor. Backend/DI can replace this with a real impl
-  /// during the Firebase milestone without screens needing to change.
-  static final DataService instance = DataService._();
+  /// Singleton accessor. The service locator returns this by default.
+  /// Tests reset it through [resetForTests].
+  static final InMemoryDataService instance = InMemoryDataService._();
 
   final List<World> _worlds = [];
   final Map<String, List<Character>> _charactersByWorld = {};
@@ -25,8 +27,10 @@ class DataService extends ChangeNotifier {
 
   // -- Worlds ---------------------------------------------------------------
 
+  @override
   List<World> get worlds => List.unmodifiable(_worlds);
 
+  @override
   World? worldById(String id) {
     for (final w in _worlds) {
       if (w.id == id) return w;
@@ -34,6 +38,7 @@ class DataService extends ChangeNotifier {
     return null;
   }
 
+  @override
   World addWorld({
     required String name,
     required String genre,
@@ -52,6 +57,7 @@ class DataService extends ChangeNotifier {
     return world;
   }
 
+  @override
   void updateWorld(World updated) {
     final i = _worlds.indexWhere((w) => w.id == updated.id);
     if (i == -1) return;
@@ -59,6 +65,7 @@ class DataService extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   void deleteWorld(String id) {
     _worlds.removeWhere((w) => w.id == id);
     _charactersByWorld.remove(id);
@@ -67,9 +74,11 @@ class DataService extends ChangeNotifier {
 
   // -- Characters -----------------------------------------------------------
 
+  @override
   List<Character> charactersFor(String worldId) =>
       List.unmodifiable(_charactersByWorld[worldId] ?? const []);
 
+  @override
   Character? characterById(String worldId, String characterId) {
     for (final c in _charactersByWorld[worldId] ?? const <Character>[]) {
       if (c.id == characterId) return c;
@@ -77,6 +86,7 @@ class DataService extends ChangeNotifier {
     return null;
   }
 
+  @override
   Character addCharacter({
     required String worldId,
     required String name,
@@ -97,6 +107,7 @@ class DataService extends ChangeNotifier {
     return character;
   }
 
+  @override
   void updateCharacter(Character updated) {
     final list = _charactersByWorld[updated.worldId];
     if (list == null) return;
@@ -106,7 +117,11 @@ class DataService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void deleteCharacter({required String worldId, required String characterId}) {
+  @override
+  void deleteCharacter({
+    required String worldId,
+    required String characterId,
+  }) {
     final list = _charactersByWorld[worldId];
     if (list == null) return;
     list.removeWhere((c) => c.id == characterId);

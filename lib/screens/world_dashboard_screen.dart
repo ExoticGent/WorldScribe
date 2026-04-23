@@ -4,7 +4,7 @@ import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
 import '../core/theme/app_colors.dart';
-import '../services/data_service.dart';
+import '../services/service_locator.dart';
 import '../widgets/dashboard_tile.dart';
 
 /// Hub for a single world. Shows a header summary and a grid of
@@ -17,7 +17,7 @@ class WorldDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = DataService.instance;
+    final data = dataService;
 
     return Scaffold(
       body: ListenableBuilder(

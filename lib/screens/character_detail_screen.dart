@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/theme/app_colors.dart';
 import '../models/character.dart';
-import '../services/data_service.dart';
+import '../services/service_locator.dart';
 
 /// Read-only detail view for a single character. Supports deletion via
 /// the overflow menu (with a confirmation dialog); full edit flow lands
@@ -45,7 +45,7 @@ class CharacterDetailScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      DataService.instance.deleteCharacter(
+      dataService.deleteCharacter(
         worldId: worldId,
         characterId: characterId,
       );
@@ -57,7 +57,7 @@ class CharacterDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = DataService.instance;
+    final data = dataService;
 
     return Scaffold(
       body: ListenableBuilder(

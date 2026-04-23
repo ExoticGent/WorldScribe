@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:worldscribe/services/data_service.dart';
+import 'package:worldscribe/services/in_memory_data_service.dart';
 
 void main() {
-  late DataService service;
+  late InMemoryDataService service;
 
   setUp(() {
-    service = DataService.instance..resetForTests();
+    service = InMemoryDataService.instance..resetForTests();
   });
 
   test('seeds two worlds with characters', () {

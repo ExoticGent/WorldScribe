@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
-import '../services/data_service.dart';
+import '../services/service_locator.dart';
 
 /// Form for creating a new [World]. On save, inserts into [DataService]
 /// and replaces this route with the new world's dashboard so the user
@@ -33,7 +33,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final world = DataService.instance.addWorld(
+    final world = dataService.addWorld(
       name: _nameController.text,
       genre: _genreController.text,
       description: _descriptionController.text,

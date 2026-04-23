@@ -6,11 +6,11 @@ import 'package:worldscribe/core/constants/route_args.dart';
 import 'package:worldscribe/core/router.dart';
 import 'package:worldscribe/core/theme/app_theme.dart';
 import 'package:worldscribe/main.dart';
-import 'package:worldscribe/services/data_service.dart';
+import 'package:worldscribe/services/in_memory_data_service.dart';
 
 void main() {
   setUp(() {
-    DataService.instance.resetForTests();
+    InMemoryDataService.instance.resetForTests();
   });
 
   // Give the test surface a phone-sized window so popup menus, dialogs,
@@ -76,7 +76,7 @@ void main() {
 
   testWidgets('Add character flow pushes a new row onto Characters',
       (tester) async {
-    final world = DataService.instance.worlds.first;
+    final world = InMemoryDataService.instance.worlds.first;
     await tester.pumpWidget(_appAtRoute(
       AppRoutes.characters,
       arguments: WorldRouteArgs(worldId: world.id),
@@ -101,8 +101,8 @@ void main() {
 
   testWidgets('Delete from Character Detail removes the character',
       (tester) async {
-    final world = DataService.instance.worlds.first;
-    final character = DataService.instance.charactersFor(world.id).first;
+    final world = InMemoryDataService.instance.worlds.first;
+    final character = InMemoryDataService.instance.charactersFor(world.id).first;
 
     await tester.pumpWidget(_appAtRoute(
       AppRoutes.characterDetail,
@@ -123,7 +123,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      DataService.instance.characterById(world.id, character.id),
+      InMemoryDataService.instance.characterById(world.id, character.id),
       isNull,
     );
   });

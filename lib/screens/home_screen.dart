@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
-import '../services/data_service.dart';
+import '../services/service_locator.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/world_card.dart';
 
@@ -15,7 +15,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final data = DataService.instance;
+    final data = dataService;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.homeTitle)),

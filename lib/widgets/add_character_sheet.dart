@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
-import '../services/data_service.dart';
+import '../services/service_locator.dart';
 
 /// Bottom sheet used on the Characters screen to add a new character.
 /// A dedicated sheet (rather than a full screen) keeps the MVP screen
@@ -47,7 +47,7 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final character = DataService.instance.addCharacter(
+    final character = dataService.addCharacter(
       worldId: widget.worldId,
       name: _nameController.text,
       role: _roleController.text,
