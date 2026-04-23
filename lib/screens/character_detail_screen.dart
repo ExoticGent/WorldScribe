@@ -90,15 +90,16 @@ class CharacterDetailScreen extends StatelessWidget {
                     itemBuilder: (_) => const [
                       PopupMenuItem(
                         value: _MenuAction.delete,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline,
-                              color: AppColors.emberRed,
-                            ),
-                            SizedBox(width: 10),
-                            Text('Delete character'),
-                          ],
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: AppColors.emberRed,
+                            size: 20,
+                          ),
+                          title: Text('Delete character'),
                         ),
                       ),
                     ],

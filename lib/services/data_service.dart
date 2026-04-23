@@ -113,6 +113,19 @@ class DataService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // -- Test helpers ---------------------------------------------------------
+
+  /// Wipes all state and re-seeds the mock data. Only intended for tests;
+  /// production code should never call this.
+  @visibleForTesting
+  void resetForTests() {
+    _worlds.clear();
+    _charactersByWorld.clear();
+    _idSeq = 0;
+    _seedMockData();
+    notifyListeners();
+  }
+
   // -- Helpers --------------------------------------------------------------
 
   String _nextId(String prefix) {
