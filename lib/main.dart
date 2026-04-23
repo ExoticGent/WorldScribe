@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'core/constants/app_routes.dart';
+import 'core/constants/app_strings.dart';
+import 'core/router.dart';
+import 'core/theme/app_theme.dart';
+
 void main() {
   runApp(const WorldScribeApp());
 }
@@ -10,15 +15,11 @@ class WorldScribeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'WorldScribe',
+      title: AppStrings.appName,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.deepPurple,
-      ),
-      home: const Scaffold(
-        body: Center(child: Text('WorldScribe')),
-      ),
+      theme: AppTheme.dark,
+      initialRoute: AppRoutes.splash,
+      onGenerateRoute: AppRouter.generate,
     );
   }
 }
