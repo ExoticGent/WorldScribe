@@ -13,7 +13,8 @@
           "projectId": "worldscribe-9c753",
           "configurations": {
             "android": "1:625579797661:android:25ede5575cbceea4a07874",
-            "ios": "1:625579797661:ios:dd176953c72ca3f4a07874"
+            "ios": "1:625579797661:ios:dd176953c72ca3f4a07874",
+            "web": "1:625579797661:web:8a0b0a54084eb5f4a07874"
           }
         }
       }
