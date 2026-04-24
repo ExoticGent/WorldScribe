@@ -13,10 +13,11 @@ product brief.
 ## Status
 
 Prototype - the Flutter UI is running against a seeded in-memory mock
-store today. Firebase bootstrapping and a Firestore-backed service are
-now scaffolded, but a real Firebase project still needs platform
-configuration before the app can sync live data. Gemini is not wired
-yet.
+store today. Firebase app configuration is now connected to the real
+`worldscribe-9c753` project, and Firestore rules/indexes have been
+deployed. The remaining backend cutover work is enabling an auth
+provider for sign-in and smoke-testing the live flows. Gemini is not
+wired yet.
 
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
@@ -79,6 +80,10 @@ lib/
 test/
   services/data_service_test.dart
   widget_test.dart
+
+firebase.json
+firestore.rules
+firestore.indexes.json
 ```
 
 ---
@@ -121,12 +126,12 @@ flutter test
 
 ### Finishing Firebase setup
 
-1. Run `flutterfire configure` for the Firebase project you want to use.
-2. Commit the generated platform config files and `firebase_options.dart`.
-3. Enable Anonymous Auth in Firebase Authentication.
-4. Add Firestore security rules for `users/{uid}/worlds/{worldId}`.
-5. Re-run the app. `AppBootstrap` will automatically switch from the
-   mock service to `FirestoreDataService` once Firebase is configured.
+1. Enable Anonymous Auth in Firebase Authentication for
+   `worldscribe-9c753`.
+2. Smoke-test create/read/delete against the live backend on a device or
+   emulator.
+3. If startup still falls back to mock data, check Firebase console
+   propagation and auth settings first.
 
 ### Where to plug in Gemini
 

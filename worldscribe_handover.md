@@ -34,8 +34,6 @@ Implemented:
 
 Not implemented yet:
 
-- Real Firebase project configuration files
-- Firestore security rules
 - Gemini / AI generation flow
 - Locations, factions, lore editing, and AI Forge functionality
 
@@ -102,17 +100,26 @@ The codebase now contains:
 - `AppBootstrap` startup wiring
 - Anonymous sign-in attempt during bootstrap
 - Firestore-backed data service under `users/{uid}/worlds/{worldId}`
-- A placeholder `lib/firebase_options.dart`
+- Real generated `lib/firebase_options.dart`
+- `android/app/google-services.json`
+- `ios/Runner/GoogleService-Info.plist`
+- Local `firebase.json`, `firestore.rules`, and `firestore.indexes.json`
+- Deployed Firestore rules and indexes on the default database
+
+Current Firebase project:
+
+- Project ID: `worldscribe-9c753`
+- Android app ID: `1:625579797661:android:25ede5575cbceea4a07874`
+- iOS app ID: `1:625579797661:ios:dd176953c72ca3f4a07874`
 
 What still needs to happen before live Firebase works:
 
-1. Run `flutterfire configure`
-2. Replace the placeholder `lib/firebase_options.dart` with generated values
-3. Commit platform config files such as `google-services.json`
-4. Enable Anonymous Auth in Firebase Authentication
-5. Add Firestore rules for per-user isolation
+1. Enable Anonymous Auth in Firebase Authentication
+2. Smoke-test the live flows on a device/emulator
+3. Confirm startup no longer falls back to the in-memory mock
 
-Until then, the app intentionally falls back to in-memory mode.
+Until those project-side steps are complete, the app intentionally falls
+back to in-memory mode.
 
 ---
 
@@ -143,6 +150,7 @@ Passing checks at handoff time:
 
 - `flutter analyze`
 - `flutter test`
+- `flutter build apk --debug`
 
 Coverage currently includes:
 
@@ -157,7 +165,8 @@ Coverage currently includes:
 
 ## Risks and gaps
 
-- Firebase cannot actually connect until generated config files exist
+- Firebase app configuration and Firestore deployment are in place, but
+  auth provider setup may still block live sign-in
 - Anonymous auth is convenient for bootstrapping but may need upgrading
   later if named user accounts are required
 - Firestore delete currently removes a world's characters client-side by
@@ -169,11 +178,10 @@ Coverage currently includes:
 
 ## Recommended next steps
 
-1. Run `flutterfire configure` against the real Firebase project
-2. Add Firestore security rules and validate anonymous sign-in
-3. Smoke-test create/read/delete against Firestore on device
-4. Add world editing and world deletion flows
-5. Start the Cloud Function + Gemini integration for AI generation
+1. Enable Anonymous Auth in the Firebase project
+2. Smoke-test create/read/delete against Firestore on device
+3. Add world editing and world deletion flows
+4. Start the Cloud Function + Gemini integration for AI generation
 
 ---
 

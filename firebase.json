@@ -1,0 +1,26 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "worldscribe-9c753",
+          "appId": "1:625579797661:android:25ede5575cbceea4a07874",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "worldscribe-9c753",
+          "configurations": {
+            "android": "1:625579797661:android:25ede5575cbceea4a07874",
+            "ios": "1:625579797661:ios:dd176953c72ca3f4a07874"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

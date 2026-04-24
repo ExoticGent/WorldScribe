@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "625579797661",
+    "project_id": "worldscribe-9c753",
+    "storage_bucket": "worldscribe-9c753.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:625579797661:android:25ede5575cbceea4a07874",
+        "android_client_info": {
+          "package_name": "com.worldscribe.worldscribe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDH3oCHawSJQCh46QG5xHANgu_mtUITyQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
