@@ -131,6 +131,15 @@ What still needs to happen before live Firebase works:
 Until those project-side steps are complete, the app intentionally falls
 back to in-memory mode.
 
+Important long-term note:
+
+- Anonymous Auth is acceptable here as a short-term development and
+  testing bridge.
+- Once WorldScribe has a real sign-in flow, revisit whether Anonymous
+  Auth is still needed.
+- If guest accounts are no longer needed, disable Anonymous Auth in
+  Firebase Authentication so the long-term auth surface stays tighter.
+
 ---
 
 ## Firestore shape
@@ -195,6 +204,8 @@ Coverage currently includes:
 2. Smoke-test create/read/delete against Firestore on device
 3. Add world editing and world deletion flows
 4. Start the Cloud Function + Gemini integration for AI generation
+5. Revisit Anonymous Auth later and disable it if permanent sign-in
+   makes guest accounts unnecessary
 
 ---
 
