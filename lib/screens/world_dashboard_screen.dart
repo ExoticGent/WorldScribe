@@ -95,6 +95,7 @@ class WorldDashboardScreen extends StatelessWidget {
           }
 
           final characterCount = data.charactersFor(world.id).length;
+          final locationCount = data.locationsFor(world.id).length;
 
           return CustomScrollView(
             slivers: [
@@ -176,8 +177,11 @@ class WorldDashboardScreen extends StatelessWidget {
                     DashboardTile(
                       icon: Icons.map_outlined,
                       label: AppStrings.locationsSection,
-                      onTap: null,
-                      comingSoon: true,
+                      count: locationCount,
+                      onTap: () => Navigator.of(context).pushNamed(
+                        AppRoutes.locations,
+                        arguments: WorldRouteArgs(worldId: world.id),
+                      ),
                     ),
                     DashboardTile(
                       icon: Icons.shield_outlined,

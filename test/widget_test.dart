@@ -171,6 +171,31 @@ void main() {
     );
   });
 
+  testWidgets('Add location flow pushes a new row onto Locations', (
+    tester,
+  ) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.locations,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'New Location'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'The Hollow Observatory',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Location'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The Hollow Observatory'), findsOneWidget);
+  });
+
   testWidgets('Add character flow pushes a new row onto Characters', (
     tester,
   ) async {

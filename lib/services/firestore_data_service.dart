@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/character.dart';
+import '../models/location.dart';
 import '../models/world.dart';
 import 'worldscribe_data_service.dart';
 
@@ -22,8 +23,11 @@ class FirestoreDataService extends WorldscribeDataService {
   final String userId;
 
   final Map<String, List<Character>> _charactersByWorld = {};
+  final Map<String, List<Location>> _locationsByWorld = {};
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
   _characterSubs = {};
+  final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+  _locationSubs = {};
 
   List<World> _worlds = const [];
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _worldsSub;
@@ -65,6 +69,18 @@ class FirestoreDataService extends WorldscribeDataService {
   }
 
   @override
+  List<Location> locationsFor(String worldId) =>
+      List.unmodifiable(_locationsByWorld[worldId] ?? const []);
+
+  @override
+  Location? locationById(String worldId, String locationId) {
+    for (final location in _locationsByWorld[worldId] ?? const <Location>[]) {
+      if (location.id == locationId) return location;
+    }
+    return null;
+  }
+
+  @override
   Future<void> initialize() => _initializeFuture ??= _initializeInternal();
 
   Future<void> _initializeInternal() {
@@ -80,9 +96,9 @@ class FirestoreDataService extends WorldscribeDataService {
         .listen(
           (snapshot) {
             _worlds = snapshot.docs.map(_worldFromDoc).toList(growable: false);
-            _syncCharacterSubscriptions(
-              _worlds.map((world) => world.id).toSet(),
-            );
+            final worldIds = _worlds.map((world) => world.id).toSet();
+            _syncCharacterSubscriptions(worldIds);
+            _syncLocationSubscriptions(worldIds);
             _isLoading = false;
             _errorMessage = null;
             notifyListeners();
@@ -120,6 +136,7 @@ class FirestoreDataService extends WorldscribeDataService {
 
     _worlds = [world, ..._worlds];
     _charactersByWorld.putIfAbsent(world.id, () => []);
+    _locationsByWorld.putIfAbsent(world.id, () => []);
     _errorMessage = null;
     notifyListeners();
 
@@ -131,6 +148,7 @@ class FirestoreDataService extends WorldscribeDataService {
           .where((item) => item.id != world.id)
           .toList(growable: false);
       _charactersByWorld.remove(world.id);
+      _locationsByWorld.remove(world.id);
       _errorMessage = 'Could not create the world in Firebase.';
       notifyListeners();
       rethrow;
@@ -170,21 +188,29 @@ class FirestoreDataService extends WorldscribeDataService {
 
     final removedWorld = _worlds[index];
     final removedCharacters = _charactersByWorld[id];
+    final removedLocations = _locationsByWorld[id];
     final removedSubscription = _characterSubs.remove(id);
+    final removedLocationSubscription = _locationSubs.remove(id);
 
     final nextWorlds = List<World>.from(_worlds)..removeAt(index);
     _worlds = List.unmodifiable(nextWorlds);
     _charactersByWorld.remove(id);
+    _locationsByWorld.remove(id);
     _errorMessage = null;
     removedSubscription?.cancel();
+    removedLocationSubscription?.cancel();
     notifyListeners();
 
     try {
       final batch = _firestore.batch();
       final worldRef = _worldsRef.doc(id);
       final charactersSnapshot = await worldRef.collection('characters').get();
+      final locationsSnapshot = await worldRef.collection('locations').get();
 
       for (final doc in charactersSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      for (final doc in locationsSnapshot.docs) {
         batch.delete(doc.reference);
       }
       batch.delete(worldRef);
@@ -196,8 +222,12 @@ class FirestoreDataService extends WorldscribeDataService {
       if (removedCharacters != null) {
         _charactersByWorld[id] = removedCharacters;
       }
+      if (removedLocations != null) {
+        _locationsByWorld[id] = removedLocations;
+      }
       if (worldById(id) != null) {
         _characterSubs[id] = _subscribeToCharacters(id);
+        _locationSubs[id] = _subscribeToLocations(id);
       }
       _errorMessage = 'Could not delete the world from Firebase.';
       notifyListeners();
@@ -309,12 +339,49 @@ class FirestoreDataService extends WorldscribeDataService {
   }
 
   @override
+  Future<Location> addLocation({
+    required String worldId,
+    required String name,
+    required String type,
+    required String description,
+  }) async {
+    final doc = _worldsRef.doc(worldId).collection('locations').doc();
+    final location = Location(
+      id: doc.id,
+      worldId: worldId,
+      name: name.trim(),
+      type: type.trim(),
+      description: description.trim(),
+      createdAt: DateTime.now().toUtc(),
+    );
+
+    final previous = _locationsByWorld[worldId] ?? const <Location>[];
+    _locationsByWorld[worldId] = [location, ...previous];
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await doc.set(_locationToFirestore(location));
+      return location;
+    } catch (_) {
+      _locationsByWorld[worldId] = previous;
+      _errorMessage = 'Could not save the location in Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  @override
   void dispose() {
     _worldsSub?.cancel();
     for (final sub in _characterSubs.values) {
       sub.cancel();
     }
     _characterSubs.clear();
+    for (final sub in _locationSubs.values) {
+      sub.cancel();
+    }
+    _locationSubs.clear();
     super.dispose();
   }
 
@@ -329,6 +396,20 @@ class FirestoreDataService extends WorldscribeDataService {
     for (final worldId in worldIds.difference(activeWorldIds)) {
       _charactersByWorld.putIfAbsent(worldId, () => []);
       _characterSubs[worldId] = _subscribeToCharacters(worldId);
+    }
+  }
+
+  void _syncLocationSubscriptions(Set<String> worldIds) {
+    final activeWorldIds = _locationSubs.keys.toSet();
+
+    for (final removedWorldId in activeWorldIds.difference(worldIds)) {
+      _locationSubs.remove(removedWorldId)?.cancel();
+      _locationsByWorld.remove(removedWorldId);
+    }
+
+    for (final worldId in worldIds.difference(activeWorldIds)) {
+      _locationsByWorld.putIfAbsent(worldId, () => []);
+      _locationSubs[worldId] = _subscribeToLocations(worldId);
     }
   }
 
@@ -349,6 +430,29 @@ class FirestoreDataService extends WorldscribeDataService {
           },
           onError: (Object error, StackTrace stackTrace) {
             _errorMessage = 'Could not load some characters from Firebase.';
+            notifyListeners();
+          },
+        );
+  }
+
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>> _subscribeToLocations(
+    String worldId,
+  ) {
+    return _worldsRef
+        .doc(worldId)
+        .collection('locations')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            _locationsByWorld[worldId] = snapshot.docs
+                .map((doc) => _locationFromDoc(doc, worldId))
+                .toList(growable: false);
+            _errorMessage = null;
+            notifyListeners();
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            _errorMessage = 'Could not load some locations from Firebase.';
             notifyListeners();
           },
         );
@@ -380,6 +484,21 @@ class FirestoreDataService extends WorldscribeDataService {
     );
   }
 
+  Location _locationFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+    String worldId,
+  ) {
+    final data = doc.data();
+    return Location(
+      id: doc.id,
+      worldId: worldId,
+      name: data['name'] as String? ?? '',
+      type: data['type'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      createdAt: _readDate(data['createdAt']),
+    );
+  }
+
   Map<String, dynamic> _worldToFirestore(World world) => {
     'name': world.name,
     'genre': world.genre,
@@ -392,6 +511,13 @@ class FirestoreDataService extends WorldscribeDataService {
     'role': character.role,
     'description': character.description,
     'createdAt': Timestamp.fromDate(character.createdAt),
+  };
+
+  Map<String, dynamic> _locationToFirestore(Location location) => {
+    'name': location.name,
+    'type': location.type,
+    'description': location.description,
+    'createdAt': Timestamp.fromDate(location.createdAt),
   };
 
   DateTime _readDate(Object? value) {

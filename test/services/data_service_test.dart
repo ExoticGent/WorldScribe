@@ -43,6 +43,21 @@ void main() {
     expect(service.characterById(world.id, character.id)?.name, 'Witness');
   });
 
+  test('addLocation appends to the right world', () async {
+    final world = service.worlds.first;
+    final before = service.locationsFor(world.id).length;
+
+    final location = await service.addLocation(
+      worldId: world.id,
+      name: 'Ashen Spire',
+      type: 'Fortress',
+      description: 'A watchtower fused into volcanic glass.',
+    );
+
+    expect(service.locationsFor(world.id).length, before + 1);
+    expect(service.locationById(world.id, location.id)?.name, 'Ashen Spire');
+  });
+
   test('updateWorld changes the stored fields', () async {
     final world = service.worlds.first;
 

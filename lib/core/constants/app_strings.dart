@@ -67,12 +67,27 @@ class AppStrings {
       'Appearance, personality, motivation.';
   static const String saveCharacter = 'Save Character';
 
+  // Locations
+  static const String locationsTitle = 'Locations';
+  static const String locationsEmpty = 'No locations yet.';
+  static const String locationsEmptyHint =
+      'Add a city, ruin, hideout, or landmark to ground this world.';
+  static const String newLocation = 'New Location';
+  static const String locationNameLabel = 'Name';
+  static const String locationTypeLabel = 'Type';
+  static const String locationTypeHint = 'City, ruin, district, fortress...';
+  static const String locationDescriptionLabel = 'Description';
+  static const String locationDescriptionHint =
+      'What is it like here, and why does it matter?';
+  static const String saveLocation = 'Save Location';
+
   // Data / bootstrap
   static const String backendFallbackNotice =
       'Running in mock-data mode until Firebase is configured.';
   static const String loadingWorlds = 'Opening your archives...';
   static const String loadingWorld = 'Opening world...';
   static const String loadingCharacters = 'Gathering your cast...';
+  static const String loadingLocations = 'Charting your map...';
   static const String loadingCharacter = 'Opening character...';
   static const String loadDataFailed = 'Unable to load your data right now.';
   static const String createWorldFailed =
@@ -83,6 +98,8 @@ class AppStrings {
       'Could not delete the world. Try again.';
   static const String saveCharacterFailed =
       'Could not save the character. Try again.';
+  static const String saveLocationFailed =
+      'Could not save the location. Try again.';
   static const String deleteCharacterFailed =
       'Could not delete the character. Try again.';
 

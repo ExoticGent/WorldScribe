@@ -19,7 +19,8 @@ service still remains as a deliberate fallback when Firebase is
 unavailable, which keeps local work and tests resilient. The first AI
 slice is now scaffolded too: `AI Forge` can generate a character
 through a callable Cloud Function once the Gemini secret is set and the
-function is deployed.
+function is deployed. The next dashboard area is now live as well:
+Locations has a real list/add flow instead of a placeholder tile.
 
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
@@ -34,6 +35,7 @@ function is deployed.
 | 9. Mock data service + tests              | Done |
 | 10. Firebase (Auth + Firestore)           | Done |
 | 11. Gemini Cloud Function integration     | In progress |
+| 12. Locations list + add-location flow    | Done |
 
 ---
 
@@ -57,6 +59,7 @@ lib/
   models/
     world.dart      immutable World
     character.dart  immutable Character
+    location.dart   immutable Location
     generated_character.dart  AI Forge response model
   services/
     worldscribe_data_service.dart  shared data contract
@@ -71,6 +74,7 @@ lib/
     create_world_screen.dart
     world_dashboard_screen.dart
     characters_screen.dart
+    locations_screen.dart
     character_detail_screen.dart
   widgets/
     empty_state.dart
@@ -79,7 +83,9 @@ lib/
     character_card.dart
     dashboard_tile.dart
     add_character_sheet.dart
+    add_location_sheet.dart
     ai_forge_sheet.dart
+    location_card.dart
   main.dart
 
 functions/
@@ -170,6 +176,12 @@ flutter run -d edge
    confirm the function writes into Firestore.
 4. Expand from character generation into lore, factions, and locations
    after the first live slice is stable.
+
+### Extending Worldbuilding Modules
+
+1. Add a location detail/edit path now that list/add exists.
+2. Bring Factions online next using the same service + screen pattern.
+3. Follow with Lore so the dashboard has all core writing surfaces.
 
 ---
 

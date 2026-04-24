@@ -9,5 +9,6 @@ class AppRoutes {
   static const String editWorld = '/edit-world';
   static const String worldDashboard = '/world';
   static const String characters = '/world/characters';
+  static const String locations = '/world/locations';
   static const String characterDetail = '/character';
 }

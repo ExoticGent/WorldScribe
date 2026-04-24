@@ -14,6 +14,7 @@ Current user-facing MVP flow:
 - Open a world dashboard
 - Use AI Forge to generate a character
 - Add characters to a world
+- Add locations to a world
 - View character details
 - Delete characters
 
@@ -30,6 +31,7 @@ Implemented:
 - Flutter app shell, routing, theme, and splash screen
 - World list, world creation/edit/delete, and world dashboard
 - Characters list, add-character sheet, character detail, delete flow
+- Locations list and add-location sheet
 - AI Forge bottom sheet that generates one character into the current
   world
 - In-memory seeded data service for local development and tests
@@ -46,7 +48,8 @@ Implemented:
 Not implemented yet:
 
 - Live Gemini secret + function deployment
-- Locations, factions, lore editing, and broader AI Forge functionality
+- Location detail/edit/delete flows
+- Factions, lore editing, and broader AI Forge functionality
 
 ---
 
@@ -63,6 +66,7 @@ lib/
   models/
     world.dart
     character.dart
+    location.dart
     generated_character.dart
   screens/
     splash_screen.dart
@@ -70,6 +74,7 @@ lib/
     create_world_screen.dart
     world_dashboard_screen.dart
     characters_screen.dart
+    locations_screen.dart
     character_detail_screen.dart
   widgets/
     empty_state.dart
@@ -78,6 +83,8 @@ lib/
     character_card.dart
     dashboard_tile.dart
     add_character_sheet.dart
+    add_location_sheet.dart
+    location_card.dart
     ai_forge_sheet.dart
   services/
     worldscribe_data_service.dart
@@ -217,6 +224,7 @@ Coverage currently includes:
 - Seeded worlds rendering
 - Create/edit/delete world flow
 - AI Forge character generation flow with a fake service
+- Add location flow
 - Add character flow
 - Delete character flow
 - In-memory service behavior
@@ -235,6 +243,8 @@ Coverage currently includes:
   fully battle-tested
 - AI Forge code is wired, but Gemini generation is not live until the
   `GEMINI_API_KEY` secret is set and the function is deployed
+- Locations are live for list/add, but there is not yet a dedicated
+  location detail or edit/delete flow
 - Anonymous auth is convenient for bootstrapping but may need upgrading
   later if named user accounts are required
 - Firestore delete currently removes a world's characters client-side by
@@ -251,7 +261,8 @@ Coverage currently includes:
    Firestore on Android or iOS
 2. Set the Gemini secret and deploy `generateCharacter`
 3. Smoke-test AI Forge against the live backend
-4. Expand locations, factions, lore, and AI Forge functionality
+4. Add a location detail/edit path
+5. Expand factions, lore, and broader AI Forge functionality
 4. Revisit Anonymous Auth later and disable it if permanent sign-in
    makes guest accounts unnecessary
 

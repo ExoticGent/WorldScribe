@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/character.dart';
+import '../models/location.dart';
 import '../models/world.dart';
 import 'worldscribe_data_service.dart';
 
@@ -22,6 +23,7 @@ class InMemoryDataService extends WorldscribeDataService {
 
   final List<World> _worlds = [];
   final Map<String, List<Character>> _charactersByWorld = {};
+  final Map<String, List<Location>> _locationsByWorld = {};
 
   int _idSeq = 0;
   bool _isLoading = false;
@@ -68,6 +70,7 @@ class InMemoryDataService extends WorldscribeDataService {
     );
     _worlds.insert(0, world);
     _charactersByWorld[world.id] = [];
+    _locationsByWorld[world.id] = [];
     notifyListeners();
     return world;
   }
@@ -84,6 +87,7 @@ class InMemoryDataService extends WorldscribeDataService {
   Future<void> deleteWorld(String id) async {
     _worlds.removeWhere((w) => w.id == id);
     _charactersByWorld.remove(id);
+    _locationsByWorld.remove(id);
     notifyListeners();
   }
 
@@ -143,6 +147,41 @@ class InMemoryDataService extends WorldscribeDataService {
     notifyListeners();
   }
 
+  // -- Locations ------------------------------------------------------------
+
+  @override
+  List<Location> locationsFor(String worldId) =>
+      List.unmodifiable(_locationsByWorld[worldId] ?? const []);
+
+  @override
+  Location? locationById(String worldId, String locationId) {
+    for (final location in _locationsByWorld[worldId] ?? const <Location>[]) {
+      if (location.id == locationId) return location;
+    }
+    return null;
+  }
+
+  @override
+  Future<Location> addLocation({
+    required String worldId,
+    required String name,
+    required String type,
+    required String description,
+  }) async {
+    final location = Location(
+      id: _nextId('loc'),
+      worldId: worldId,
+      name: name.trim(),
+      type: type.trim(),
+      description: description.trim(),
+      createdAt: DateTime.now(),
+    );
+    final list = _locationsByWorld.putIfAbsent(worldId, () => []);
+    list.insert(0, location);
+    notifyListeners();
+    return location;
+  }
+
   // -- Test helpers ---------------------------------------------------------
 
   /// Wipes all state and re-seeds the mock data. Only intended for tests;
@@ -151,6 +190,7 @@ class InMemoryDataService extends WorldscribeDataService {
   void resetForTests() {
     _worlds.clear();
     _charactersByWorld.clear();
+    _locationsByWorld.clear();
     _idSeq = 0;
     _isLoading = false;
     _errorMessage = null;
@@ -223,5 +263,7 @@ class InMemoryDataService extends WorldscribeDataService {
         createdAt: DateTime.now().subtract(const Duration(days: 2)),
       ),
     ];
+    _locationsByWorld[aerenthal.id] = [];
+    _locationsByWorld[neoHavana.id] = [];
   }
 }

@@ -55,6 +55,26 @@ void main() {
         });
   }
 
+  Future<void> seedLocation({
+    required String worldId,
+    required String locationId,
+    required String name,
+    required String type,
+    required String description,
+    required DateTime createdAt,
+  }) {
+    return worldsRef()
+        .doc(worldId)
+        .collection('locations')
+        .doc(locationId)
+        .set({
+          'name': name,
+          'type': type,
+          'description': description,
+          'createdAt': Timestamp.fromDate(createdAt),
+        });
+  }
+
   setUp(() {
     firestore = FakeFirebaseFirestore();
     service = FirestoreDataService(firestore: firestore, userId: userId);
@@ -97,6 +117,14 @@ void main() {
         description: 'Knows the routes between glass towers.',
         createdAt: DateTime.utc(2025, 2, 3),
       );
+      await seedLocation(
+        worldId: 'world-newer',
+        locationId: 'loc-1',
+        name: 'The Prism Causeway',
+        type: 'Bridge district',
+        description: 'A suspended route between drifting glass wards.',
+        createdAt: DateTime.utc(2025, 2, 4),
+      );
 
       await service.initialize();
       await settleFirestore();
@@ -110,6 +138,10 @@ void main() {
       expect(
         service.charactersFor('world-newer').map((character) => character.id),
         ['char-newer', 'char-older'],
+      );
+      expect(
+        service.locationsFor('world-newer').map((location) => location.id),
+        ['loc-1'],
       );
     },
   );
@@ -142,6 +174,18 @@ void main() {
       service.characterById('world-remote', 'char-remote')?.role,
       'Archivist',
     );
+
+    await seedLocation(
+      worldId: 'world-remote',
+      locationId: 'loc-remote',
+      name: 'The Ember Ferry',
+      type: 'Harbor',
+      description: 'The ferry terminal where the valley changes hands.',
+      createdAt: DateTime.utc(2025, 3, 3),
+    );
+    await settleFirestore();
+
+    expect(service.locationById('world-remote', 'loc-remote')?.type, 'Harbor');
   });
 
   test(
@@ -197,6 +241,10 @@ void main() {
       expect((await worldsRef().doc(world.id).get()).exists, isFalse);
       expect(
         (await worldsRef().doc(world.id).collection('characters').get()).docs,
+        isEmpty,
+      );
+      expect(
+        (await worldsRef().doc(world.id).collection('locations').get()).docs,
         isEmpty,
       );
     },
@@ -256,6 +304,38 @@ void main() {
               .get())
           .exists,
       isFalse,
+    );
+  });
+
+  test('location CRUD persists to Firestore', () async {
+    await seedWorld(
+      id: 'world-2',
+      name: 'Rivercourt',
+      genre: 'Fantasy',
+      description: 'A floodplain of shrines and broken roads.',
+      createdAt: DateTime.utc(2025, 4, 2),
+    );
+
+    await service.initialize();
+    await settleFirestore();
+
+    final location = await service.addLocation(
+      worldId: 'world-2',
+      name: 'Mirror Lock',
+      type: 'Canal gate',
+      description: 'A gatehouse that reflects moonlight into the river.',
+    );
+    await settleFirestore();
+
+    expect(service.locationById('world-2', location.id)?.name, 'Mirror Lock');
+    expect(
+      (await worldsRef()
+              .doc('world-2')
+              .collection('locations')
+              .doc(location.id)
+              .get())
+          .data()?['type'],
+      'Canal gate',
     );
   });
 }

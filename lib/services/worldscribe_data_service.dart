@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/character.dart';
+import '../models/location.dart';
 import '../models/world.dart';
 
 /// Data-access contract for the whole app.
@@ -54,5 +55,18 @@ abstract class WorldscribeDataService extends ChangeNotifier {
   Future<void> deleteCharacter({
     required String worldId,
     required String characterId,
+  });
+
+  // -- Locations ------------------------------------------------------------
+
+  List<Location> locationsFor(String worldId);
+
+  Location? locationById(String worldId, String locationId);
+
+  Future<Location> addLocation({
+    required String worldId,
+    required String name,
+    required String type,
+    required String description,
   });
 }

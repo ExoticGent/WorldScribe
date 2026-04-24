@@ -4,6 +4,7 @@ import '../screens/character_detail_screen.dart';
 import '../screens/characters_screen.dart';
 import '../screens/create_world_screen.dart';
 import '../screens/home_screen.dart';
+import '../screens/locations_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/world_dashboard_screen.dart';
 import 'constants/app_routes.dart';
@@ -36,6 +37,10 @@ class AppRouter {
       case AppRoutes.characters:
         final args = _require<WorldRouteArgs>(settings);
         return _page(CharactersScreen(worldId: args.worldId), settings);
+
+      case AppRoutes.locations:
+        final args = _require<WorldRouteArgs>(settings);
+        return _page(LocationsScreen(worldId: args.worldId), settings);
 
       case AppRoutes.characterDetail:
         final args = _require<CharacterRouteArgs>(settings);
