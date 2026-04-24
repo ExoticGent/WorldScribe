@@ -75,6 +75,46 @@ void main() {
     expect(updated?.description, 'Now with a rewritten court and cleaner map.');
   });
 
+  test('updateLocation changes the stored fields', () async {
+    final world = service.worlds.first;
+    final location = await service.addLocation(
+      worldId: world.id,
+      name: 'Old Name',
+      type: 'Ruin',
+      description: 'A first draft.',
+    );
+
+    await service.updateLocation(
+      location.copyWith(
+        name: 'New Name',
+        type: 'Fortress',
+        description: 'Now with finished walls.',
+      ),
+    );
+
+    final updated = service.locationById(world.id, location.id);
+    expect(updated?.name, 'New Name');
+    expect(updated?.type, 'Fortress');
+    expect(updated?.description, 'Now with finished walls.');
+  });
+
+  test('deleteLocation removes from the list', () async {
+    final world = service.worlds.first;
+    final location = await service.addLocation(
+      worldId: world.id,
+      name: 'Mayfly Outpost',
+      type: 'Camp',
+      description: '',
+    );
+
+    await service.deleteLocation(
+      worldId: world.id,
+      locationId: location.id,
+    );
+
+    expect(service.locationById(world.id, location.id), isNull);
+  });
+
   test('deleteCharacter removes from the list', () async {
     final world = service.worlds.first;
     final character = await service.addCharacter(

@@ -69,4 +69,11 @@ abstract class WorldscribeDataService extends ChangeNotifier {
     required String type,
     required String description,
   });
+
+  Future<void> updateLocation(Location updated);
+
+  Future<void> deleteLocation({
+    required String worldId,
+    required String locationId,
+  });
 }

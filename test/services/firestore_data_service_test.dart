@@ -337,5 +337,42 @@ void main() {
           .data()?['type'],
       'Canal gate',
     );
+
+    await service.updateLocation(
+      location.copyWith(
+        name: 'Mirror Lock Reforged',
+        type: 'Flood gate',
+        description: 'The gate rebuilt after the summer floods.',
+      ),
+    );
+    await settleFirestore();
+
+    final updatedLocationDoc = await worldsRef()
+        .doc('world-2')
+        .collection('locations')
+        .doc(location.id)
+        .get();
+    expect(
+      service.locationById('world-2', location.id)?.name,
+      'Mirror Lock Reforged',
+    );
+    expect(updatedLocationDoc.data()?['type'], 'Flood gate');
+
+    await service.deleteLocation(
+      worldId: 'world-2',
+      locationId: location.id,
+    );
+    await settleFirestore();
+
+    expect(service.locationById('world-2', location.id), isNull);
+    expect(
+      (await worldsRef()
+              .doc('world-2')
+              .collection('locations')
+              .doc(location.id)
+              .get())
+          .exists,
+      isFalse,
+    );
   });
 }

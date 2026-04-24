@@ -182,6 +182,27 @@ class InMemoryDataService extends WorldscribeDataService {
     return location;
   }
 
+  @override
+  Future<void> updateLocation(Location updated) async {
+    final list = _locationsByWorld[updated.worldId];
+    if (list == null) return;
+    final i = list.indexWhere((l) => l.id == updated.id);
+    if (i == -1) return;
+    list[i] = updated;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> deleteLocation({
+    required String worldId,
+    required String locationId,
+  }) async {
+    final list = _locationsByWorld[worldId];
+    if (list == null) return;
+    list.removeWhere((l) => l.id == locationId);
+    notifyListeners();
+  }
+
   // -- Test helpers ---------------------------------------------------------
 
   /// Wipes all state and re-seeds the mock data. Only intended for tests;

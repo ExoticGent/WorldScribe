@@ -375,6 +375,76 @@ class FirestoreDataService extends WorldscribeDataService {
   }
 
   @override
+  Future<void> updateLocation(Location updated) async {
+    final locations = _locationsByWorld[updated.worldId];
+    if (locations == null) return;
+    final index = locations.indexWhere(
+      (location) => location.id == updated.id,
+    );
+    if (index == -1) return;
+
+    final previous = locations[index];
+    final nextLocations = List<Location>.from(locations);
+    nextLocations[index] = updated;
+    _locationsByWorld[updated.worldId] = nextLocations;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _worldsRef
+          .doc(updated.worldId)
+          .collection('locations')
+          .doc(updated.id)
+          .set(_locationToFirestore(updated), SetOptions(merge: true));
+    } catch (_) {
+      final rollback = List<Location>.from(
+        _locationsByWorld[updated.worldId] ?? const <Location>[],
+      );
+      rollback[index] = previous;
+      _locationsByWorld[updated.worldId] = rollback;
+      _errorMessage = 'Could not update the location in Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteLocation({
+    required String worldId,
+    required String locationId,
+  }) async {
+    final locations = _locationsByWorld[worldId];
+    if (locations == null) return;
+    final index = locations.indexWhere(
+      (location) => location.id == locationId,
+    );
+    if (index == -1) return;
+
+    final removed = locations[index];
+    final nextLocations = List<Location>.from(locations)..removeAt(index);
+    _locationsByWorld[worldId] = nextLocations;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _worldsRef
+          .doc(worldId)
+          .collection('locations')
+          .doc(locationId)
+          .delete();
+    } catch (_) {
+      final rollback = List<Location>.from(
+        _locationsByWorld[worldId] ?? const <Location>[],
+      );
+      rollback.insert(index, removed);
+      _locationsByWorld[worldId] = rollback;
+      _errorMessage = 'Could not delete the location from Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  @override
   void dispose() {
     _worldsSub?.cancel();
     for (final sub in _characterSubs.values) {
