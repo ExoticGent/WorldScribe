@@ -19,11 +19,7 @@ class Character {
   final String description;
   final DateTime createdAt;
 
-  Character copyWith({
-    String? name,
-    String? role,
-    String? description,
-  }) {
+  Character copyWith({String? name, String? role, String? description}) {
     return Character(
       id: id,
       worldId: worldId,
@@ -35,22 +31,22 @@ class Character {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'worldId': worldId,
-        'name': name,
-        'role': role,
-        'description': description,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'worldId': worldId,
+    'name': name,
+    'role': role,
+    'description': description,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory Character.fromJson(Map<String, dynamic> json) => Character(
-        id: json['id'] as String,
-        worldId: json['worldId'] as String,
-        name: json['name'] as String,
-        role: json['role'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    worldId: json['worldId'] as String,
+    name: json['name'] as String,
+    role: json['role'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   @override
   bool operator ==(Object other) =>

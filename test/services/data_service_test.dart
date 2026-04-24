@@ -4,8 +4,9 @@ import 'package:worldscribe/services/in_memory_data_service.dart';
 void main() {
   late InMemoryDataService service;
 
-  setUp(() {
+  setUp(() async {
     service = InMemoryDataService.instance..resetForTests();
+    await service.initialize();
   });
 
   test('seeds two worlds with characters', () {
@@ -14,9 +15,9 @@ void main() {
     expect(service.charactersFor(first.id), isNotEmpty);
   });
 
-  test('addWorld prepends and returns the new world', () {
+  test('addWorld prepends and returns the new world', () async {
     final before = service.worlds.length;
-    final world = service.addWorld(
+    final world = await service.addWorld(
       name: 'Testoria',
       genre: 'Fantasy',
       description: 'A demo world.',
@@ -27,11 +28,11 @@ void main() {
     expect(service.worldById(world.id)?.name, 'Testoria');
   });
 
-  test('addCharacter appends to the right world', () {
+  test('addCharacter appends to the right world', () async {
     final world = service.worlds.first;
     final before = service.charactersFor(world.id).length;
 
-    final character = service.addCharacter(
+    final character = await service.addCharacter(
       worldId: world.id,
       name: 'Witness',
       role: 'Herald',
@@ -42,47 +43,47 @@ void main() {
     expect(service.characterById(world.id, character.id)?.name, 'Witness');
   });
 
-  test('deleteCharacter removes from the list', () {
+  test('deleteCharacter removes from the list', () async {
     final world = service.worlds.first;
-    final character = service.addCharacter(
+    final character = await service.addCharacter(
       worldId: world.id,
       name: 'Mayfly',
       role: 'Extra',
       description: '',
     );
 
-    service.deleteCharacter(worldId: world.id, characterId: character.id);
+    await service.deleteCharacter(worldId: world.id, characterId: character.id);
 
     expect(service.characterById(world.id, character.id), isNull);
   });
 
-  test('deleteWorld also clears its characters', () {
-    final world = service.addWorld(
+  test('deleteWorld also clears its characters', () async {
+    final world = await service.addWorld(
       name: 'Ephemera',
       genre: '',
       description: '',
     );
-    service.addCharacter(
+    await service.addCharacter(
       worldId: world.id,
       name: 'Ghost',
       role: 'Specter',
       description: '',
     );
 
-    service.deleteWorld(world.id);
+    await service.deleteWorld(world.id);
 
     expect(service.worldById(world.id), isNull);
     expect(service.charactersFor(world.id), isEmpty);
   });
 
-  test('notifies listeners on add', () {
+  test('notifies listeners on add', () async {
     var callCount = 0;
     void listener() => callCount += 1;
 
     service.addListener(listener);
     addTearDown(() => service.removeListener(listener));
 
-    service.addWorld(name: 'Nova', genre: '', description: '');
+    await service.addWorld(name: 'Nova', genre: '', description: '');
 
     expect(callCount, greaterThanOrEqualTo(1));
   });

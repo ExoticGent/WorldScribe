@@ -11,9 +11,21 @@ import 'worldscribe_data_service.dart';
 /// (inside `main()` after `Firebase.initializeApp()`) with a
 /// `FirestoreDataService` instance. Screens need no changes.
 WorldscribeDataService _current = InMemoryDataService.instance;
+DataServiceMode _currentMode = DataServiceMode.inMemory;
+String? _startupNotice;
+
+enum DataServiceMode { inMemory, firestore }
 
 WorldscribeDataService get dataService => _current;
+DataServiceMode get dataServiceMode => _currentMode;
+String? get dataServiceNotice => _startupNotice;
 
-void configureDataService(WorldscribeDataService impl) {
+void configureDataService(
+  WorldscribeDataService impl, {
+  DataServiceMode mode = DataServiceMode.inMemory,
+  String? startupNotice,
+}) {
   _current = impl;
+  _currentMode = mode;
+  _startupNotice = startupNotice;
 }

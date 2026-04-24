@@ -9,8 +9,9 @@ import 'package:worldscribe/main.dart';
 import 'package:worldscribe/services/in_memory_data_service.dart';
 
 void main() {
-  setUp(() {
+  setUp(() async {
     InMemoryDataService.instance.resetForTests();
+    await InMemoryDataService.instance.initialize();
   });
 
   // Give the test surface a phone-sized window so popup menus, dialogs,
@@ -18,8 +19,7 @@ void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
     final binding = TestWidgetsFlutterBinding.instance;
-    binding.platformDispatcher.views.first.physicalSize =
-        const Size(800, 1600);
+    binding.platformDispatcher.views.first.physicalSize = const Size(800, 1600);
     binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
   });
 
@@ -28,8 +28,9 @@ void main() {
         .resetPhysicalSize();
   });
 
-  testWidgets('Splash shows the WorldScribe brand then hands off to Home',
-      (tester) async {
+  testWidgets('Splash shows the WorldScribe brand then hands off to Home', (
+    tester,
+  ) async {
     await tester.pumpWidget(const WorldScribeApp());
 
     // Initial frame: splash is mounted.
@@ -52,8 +53,9 @@ void main() {
     expect(find.text('Neo-Havana'), findsOneWidget);
   });
 
-  testWidgets('Create World saves and navigates to the dashboard',
-      (tester) async {
+  testWidgets('Create World saves and navigates to the dashboard', (
+    tester,
+  ) async {
     await tester.pumpWidget(_appAtRoute(AppRoutes.createWorld));
     await tester.pumpAndSettle();
 
@@ -74,19 +76,21 @@ void main() {
     expect(find.text('Characters'), findsOneWidget);
   });
 
-  testWidgets('Add character flow pushes a new row onto Characters',
-      (tester) async {
+  testWidgets('Add character flow pushes a new row onto Characters', (
+    tester,
+  ) async {
     final world = InMemoryDataService.instance.worlds.first;
-    await tester.pumpWidget(_appAtRoute(
-      AppRoutes.characters,
-      arguments: WorldRouteArgs(worldId: world.id),
-    ));
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.characters,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(
-      FloatingActionButton,
-      'New Character',
-    ));
+    await tester.tap(
+      find.widgetWithText(FloatingActionButton, 'New Character'),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -99,18 +103,23 @@ void main() {
     expect(find.text('The Unnamed'), findsOneWidget);
   });
 
-  testWidgets('Delete from Character Detail removes the character',
-      (tester) async {
+  testWidgets('Delete from Character Detail removes the character', (
+    tester,
+  ) async {
     final world = InMemoryDataService.instance.worlds.first;
-    final character = InMemoryDataService.instance.charactersFor(world.id).first;
+    final character = InMemoryDataService.instance
+        .charactersFor(world.id)
+        .first;
 
-    await tester.pumpWidget(_appAtRoute(
-      AppRoutes.characterDetail,
-      arguments: CharacterRouteArgs(
-        worldId: world.id,
-        characterId: character.id,
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.characterDetail,
+        arguments: CharacterRouteArgs(
+          worldId: world.id,
+          characterId: character.id,
+        ),
       ),
-    ));
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(character.name), findsWidgets);

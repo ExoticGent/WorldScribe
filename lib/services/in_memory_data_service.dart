@@ -24,6 +24,21 @@ class InMemoryDataService extends WorldscribeDataService {
   final Map<String, List<Character>> _charactersByWorld = {};
 
   int _idSeq = 0;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  bool get isLoading => _isLoading;
+
+  @override
+  String? get errorMessage => _errorMessage;
+
+  @override
+  Future<void> initialize() async {
+    _isLoading = false;
+    _errorMessage = null;
+    notifyListeners();
+  }
 
   // -- Worlds ---------------------------------------------------------------
 
@@ -39,11 +54,11 @@ class InMemoryDataService extends WorldscribeDataService {
   }
 
   @override
-  World addWorld({
+  Future<World> addWorld({
     required String name,
     required String genre,
     required String description,
-  }) {
+  }) async {
     final world = World(
       id: _nextId('world'),
       name: name.trim(),
@@ -58,7 +73,7 @@ class InMemoryDataService extends WorldscribeDataService {
   }
 
   @override
-  void updateWorld(World updated) {
+  Future<void> updateWorld(World updated) async {
     final i = _worlds.indexWhere((w) => w.id == updated.id);
     if (i == -1) return;
     _worlds[i] = updated;
@@ -66,7 +81,7 @@ class InMemoryDataService extends WorldscribeDataService {
   }
 
   @override
-  void deleteWorld(String id) {
+  Future<void> deleteWorld(String id) async {
     _worlds.removeWhere((w) => w.id == id);
     _charactersByWorld.remove(id);
     notifyListeners();
@@ -87,12 +102,12 @@ class InMemoryDataService extends WorldscribeDataService {
   }
 
   @override
-  Character addCharacter({
+  Future<Character> addCharacter({
     required String worldId,
     required String name,
     required String role,
     required String description,
-  }) {
+  }) async {
     final character = Character(
       id: _nextId('char'),
       worldId: worldId,
@@ -108,7 +123,7 @@ class InMemoryDataService extends WorldscribeDataService {
   }
 
   @override
-  void updateCharacter(Character updated) {
+  Future<void> updateCharacter(Character updated) async {
     final list = _charactersByWorld[updated.worldId];
     if (list == null) return;
     final i = list.indexWhere((c) => c.id == updated.id);
@@ -118,10 +133,10 @@ class InMemoryDataService extends WorldscribeDataService {
   }
 
   @override
-  void deleteCharacter({
+  Future<void> deleteCharacter({
     required String worldId,
     required String characterId,
-  }) {
+  }) async {
     final list = _charactersByWorld[worldId];
     if (list == null) return;
     list.removeWhere((c) => c.id == characterId);
@@ -137,6 +152,8 @@ class InMemoryDataService extends WorldscribeDataService {
     _worlds.clear();
     _charactersByWorld.clear();
     _idSeq = 0;
+    _isLoading = false;
+    _errorMessage = null;
     _seedMockData();
     notifyListeners();
   }

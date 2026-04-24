@@ -22,9 +22,9 @@ class AppTheme {
     );
 
     final baseText = ThemeData(brightness: Brightness.dark).textTheme.apply(
-          bodyColor: AppColors.parchment,
-          displayColor: AppColors.parchment,
-        );
+      bodyColor: AppColors.parchment,
+      displayColor: AppColors.parchment,
+    );
 
     final textTheme = baseText.copyWith(
       displayLarge: baseText.displayLarge?.copyWith(
@@ -98,15 +98,16 @@ class AppTheme {
         focusedBorder: _inputBorder(AppColors.gold, width: 1.5),
         errorBorder: _inputBorder(AppColors.emberRed),
         focusedErrorBorder: _inputBorder(AppColors.emberRed, width: 1.5),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.gold,
           foregroundColor: AppColors.ink,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -121,8 +122,7 @@ class AppTheme {
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.gold,
           side: const BorderSide(color: AppColors.goldDeep),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -142,9 +142,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         backgroundColor: AppColors.surfaceHigh,
         contentTextStyle: const TextStyle(color: AppColors.parchment),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         behavior: SnackBarBehavior.floating,
       ),
     );

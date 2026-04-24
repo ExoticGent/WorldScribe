@@ -8,10 +8,7 @@ class WorldRouteArgs {
 }
 
 class CharacterRouteArgs {
-  const CharacterRouteArgs({
-    required this.worldId,
-    required this.characterId,
-  });
+  const CharacterRouteArgs({required this.worldId, required this.characterId});
 
   final String worldId;
   final String characterId;

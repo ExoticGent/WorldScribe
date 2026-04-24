@@ -35,6 +35,7 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
   final _nameController = TextEditingController();
   final _roleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -44,16 +45,27 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+  Future<void> _submit() async {
+    if (_isSaving || !(_formKey.currentState?.validate() ?? false)) return;
 
-    final character = dataService.addCharacter(
-      worldId: widget.worldId,
-      name: _nameController.text,
-      role: _roleController.text,
-      description: _descriptionController.text,
-    );
-    Navigator.of(context).pop(character.id);
+    setState(() => _isSaving = true);
+
+    try {
+      final character = await dataService.addCharacter(
+        worldId: widget.worldId,
+        name: _nameController.text,
+        role: _roleController.text,
+        description: _descriptionController.text,
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(character.id);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.saveCharacterFailed)),
+      );
+      setState(() => _isSaving = false);
+    }
   }
 
   String? _requiredValidator(String? value) {
@@ -131,7 +143,7 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
-                  onPressed: _submit,
+                  onPressed: _isSaving ? null : _submit,
                   icon: const Icon(Icons.check),
                   label: const Text(AppStrings.saveCharacter),
                 ),

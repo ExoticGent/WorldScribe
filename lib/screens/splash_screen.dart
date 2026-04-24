@@ -111,11 +111,7 @@ class _Crest extends StatelessWidget {
         color: AppColors.surface,
         border: Border.all(color: AppColors.goldDeep, width: 1.5),
         boxShadow: const [
-          BoxShadow(
-            color: Color(0x33D9B382),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
+          BoxShadow(color: Color(0x33D9B382), blurRadius: 24, spreadRadius: 2),
         ],
       ),
       child: const Icon(

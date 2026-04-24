@@ -38,11 +38,7 @@ class WorldCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.public,
-                      color: AppColors.gold,
-                      size: 20,
-                    ),
+                    const Icon(Icons.public, color: AppColors.gold, size: 20),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(

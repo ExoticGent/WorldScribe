@@ -6,6 +6,8 @@ import '../core/constants/route_args.dart';
 import '../core/theme/app_colors.dart';
 import '../services/service_locator.dart';
 import '../widgets/dashboard_tile.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/loading_state.dart';
 
 /// Hub for a single world. Shows a header summary and a grid of
 /// worldbuilding sections. Only Characters is interactive in the MVP;
@@ -24,10 +26,19 @@ class WorldDashboardScreen extends StatelessWidget {
         listenable: data,
         builder: (context, _) {
           final world = data.worldById(worldId);
+          if (data.isLoading && world == null) {
+            return const LoadingState(label: AppStrings.loadingWorld);
+          }
           if (world == null) {
             return Scaffold(
               appBar: AppBar(),
-              body: const Center(child: Text('World not found')),
+              body: data.errorMessage != null
+                  ? EmptyState(
+                      icon: Icons.cloud_off_outlined,
+                      title: AppStrings.loadDataFailed,
+                      hint: data.errorMessage!,
+                    )
+                  : const Center(child: Text('World not found')),
             );
           }
 
@@ -52,8 +63,7 @@ class WorldDashboardScreen extends StatelessWidget {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                 sliver: SliverGrid(
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,

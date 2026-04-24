@@ -1,150 +1,185 @@
-# WorldScribe — Handover Document
+# WorldScribe Handover
 
-## 📱 Project Overview
-WorldScribe is a mobile-first worldbuilding app for writers, game developers, and storytellers.
+## Project overview
 
-It allows users to create and manage:
-- Worlds
-- Characters
-- Locations
-- Factions
-- Lore
+WorldScribe is a mobile-first worldbuilding app for writers, game
+developers, and storytellers.
 
-It integrates AI (Gemini API) to generate and expand creative content.
+Current user-facing MVP flow:
 
----
+- Create a world
+- Browse worlds from the home screen
+- Open a world dashboard
+- Add characters to a world
+- View character details
+- Delete characters
 
-## 🎯 MVP Goal
-Users can:
-1. Create a world  
-2. Add characters  
-3. Generate characters using AI  
-4. View and edit saved lore  
+The UI is themed as a dark fantasy journal and currently runs cleanly in
+Flutter with a local seeded data source by default.
 
 ---
 
-## 🧱 Tech Stack
-Frontend: Flutter  
-Backend: Firebase (Auth, Firestore, Cloud Functions)  
-AI: Gemini API  
+## Current status
+
+Implemented:
+
+- Flutter app shell, routing, theme, and splash screen
+- World list, world creation, and world dashboard
+- Characters list, add-character sheet, character detail, delete flow
+- In-memory seeded data service for local development and tests
+- Async-ready data abstraction for future backend integration
+- Firebase bootstrap scaffold with anonymous auth and Firestore service
+- Loading and error states for data-backed screens
+- Unit and widget tests covering the main MVP flows
+
+Not implemented yet:
+
+- Real Firebase project configuration files
+- Firestore security rules
+- Gemini / AI generation flow
+- Locations, factions, lore editing, and AI Forge functionality
 
 ---
 
-## 🧩 Architecture
+## Architecture
 
-Flutter App  
-↓  
-Firebase (Auth + Firestore)  
-↓  
-Cloud Functions (secure API layer)  
-↓  
-Gemini API  
+App structure:
 
-IMPORTANT: Never store API keys in the app.
+```text
+lib/
+  core/
+    constants/
+    theme/
+    router.dart
+  models/
+    world.dart
+    character.dart
+  screens/
+    splash_screen.dart
+    home_screen.dart
+    create_world_screen.dart
+    world_dashboard_screen.dart
+    characters_screen.dart
+    character_detail_screen.dart
+  widgets/
+    empty_state.dart
+    loading_state.dart
+    world_card.dart
+    character_card.dart
+    dashboard_tile.dart
+    add_character_sheet.dart
+  services/
+    worldscribe_data_service.dart
+    in_memory_data_service.dart
+    firestore_data_service.dart
+    app_bootstrap.dart
+    service_locator.dart
+  firebase_options.dart
+  main.dart
+```
+
+Data flow:
+
+Flutter UI
+-> `AppBootstrap`
+-> `WorldscribeDataService`
+-> either `InMemoryDataService` or `FirestoreDataService`
+
+Important detail:
+
+- The UI reads synchronously through `dataService`, but writes are async.
+- That keeps the current screens simple while still supporting Firestore.
+- If Firebase initialization fails, the app falls back to the mock store
+  and shows a notice on the home screen.
 
 ---
 
-## 📂 Folder Structure
+## Firebase status
 
-/lib
-  /core
-  /features
-  /screens
-  /widgets
-  /services
-main.dart
+The codebase now contains:
 
----
+- `firebase_core`, `firebase_auth`, and `cloud_firestore`
+- `AppBootstrap` startup wiring
+- Anonymous sign-in attempt during bootstrap
+- Firestore-backed data service under `users/{uid}/worlds/{worldId}`
+- A placeholder `lib/firebase_options.dart`
 
-## 📱 Core Screens
+What still needs to happen before live Firebase works:
 
-- Splash Screen  
-- Home Screen (World list)  
-- Create World  
-- World Dashboard  
-- Characters Screen  
-- Character Detail  
-- AI Forge  
+1. Run `flutterfire configure`
+2. Replace the placeholder `lib/firebase_options.dart` with generated values
+3. Commit platform config files such as `google-services.json`
+4. Enable Anonymous Auth in Firebase Authentication
+5. Add Firestore rules for per-user isolation
+
+Until then, the app intentionally falls back to in-memory mode.
 
 ---
 
-## 🤖 AI Flow
+## Firestore shape
 
-1. App sends prompt  
-2. Cloud Function calls Gemini  
-3. Returns JSON  
-4. Save to Firestore  
-
----
-
-## 🗄️ Firestore Structure
-
+```text
 users/
-  userId/
+  {uid}/
     worlds/
-      worldId/
+      {worldId}/
+        name
+        genre
+        description
+        createdAt
         characters/
+          {characterId}/
+            name
+            role
+            description
+            createdAt
+```
 
 ---
 
-## 🔐 Security
+## Testing
 
-- API keys only in backend  
-- User data isolated  
-- Validate AI output  
+Passing checks at handoff time:
 
----
+- `flutter analyze`
+- `flutter test`
 
-## 🚀 Phases
+Coverage currently includes:
 
-Phase 1:
-- Auth
-- Worlds
-- Characters
-- AI generation
-
-Phase 2:
-- Locations
-- Factions
-- Timeline
+- Splash to home transition
+- Seeded worlds rendering
+- Create world flow
+- Add character flow
+- Delete character flow
+- In-memory service behavior
 
 ---
 
-## 🧪 Testing
+## Risks and gaps
 
-- Create world works  
-- Add character works  
-- AI generation works  
-- Data persists  
-
----
-
-## 🎨 UI Direction
-
-- Dark fantasy journal style  
-- Card-based UI  
-- Fast and simple  
+- Firebase cannot actually connect until generated config files exist
+- Anonymous auth is convenient for bootstrapping but may need upgrading
+  later if named user accounts are required
+- Firestore delete currently removes a world's characters client-side by
+  batching subcollection deletes; large worlds may eventually need a
+  server-side cleanup strategy
+- Gemini integration is still only planned, not started
 
 ---
 
-## ⚠️ Risks
+## Recommended next steps
 
-- AI limits  
-- JSON formatting issues  
-- Scaling costs  
-
----
-
-## 💡 Future
-
-- Maps  
-- Relationships graph  
-- Export tools  
+1. Run `flutterfire configure` against the real Firebase project
+2. Add Firestore security rules and validate anonymous sign-in
+3. Smoke-test create/read/delete against Firestore on device
+4. Add world editing and world deletion flows
+5. Start the Cloud Function + Gemini integration for AI generation
 
 ---
 
-## ✅ Notes
+## Notes
 
-Focus on simplicity and speed. Avoid overbuilding early.
-
-End of file.
+- Do not ship API keys in the Flutter app
+- Keep Gemini calls behind Cloud Functions or another backend layer
+- The in-memory fallback is deliberate and should stay usable for local
+  development and tests

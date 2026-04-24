@@ -45,6 +45,21 @@ class AppStrings {
       'Appearance, personality, motivation.';
   static const String saveCharacter = 'Save Character';
 
+  // Data / bootstrap
+  static const String backendFallbackNotice =
+      'Running in mock-data mode until Firebase is configured.';
+  static const String loadingWorlds = 'Opening your archives...';
+  static const String loadingWorld = 'Opening world...';
+  static const String loadingCharacters = 'Gathering your cast...';
+  static const String loadingCharacter = 'Opening character...';
+  static const String loadDataFailed = 'Unable to load your data right now.';
+  static const String createWorldFailed =
+      'Could not create the world. Try again.';
+  static const String saveCharacterFailed =
+      'Could not save the character. Try again.';
+  static const String deleteCharacterFailed =
+      'Could not delete the character. Try again.';
+
   // Validation
   static const String requiredField = 'Required';
 }

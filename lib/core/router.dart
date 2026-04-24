@@ -27,17 +27,11 @@ class AppRouter {
 
       case AppRoutes.worldDashboard:
         final args = _require<WorldRouteArgs>(settings);
-        return _page(
-          WorldDashboardScreen(worldId: args.worldId),
-          settings,
-        );
+        return _page(WorldDashboardScreen(worldId: args.worldId), settings);
 
       case AppRoutes.characters:
         final args = _require<WorldRouteArgs>(settings);
-        return _page(
-          CharactersScreen(worldId: args.worldId),
-          settings,
-        );
+        return _page(CharactersScreen(worldId: args.worldId), settings);
 
       case AppRoutes.characterDetail:
         final args = _require<CharacterRouteArgs>(settings);
@@ -60,10 +54,7 @@ class AppRouter {
   }
 
   static MaterialPageRoute<T> _page<T>(Widget child, RouteSettings settings) {
-    return MaterialPageRoute<T>(
-      builder: (_) => child,
-      settings: settings,
-    );
+    return MaterialPageRoute<T>(builder: (_) => child, settings: settings);
   }
 
   static T _require<T>(RouteSettings settings) {

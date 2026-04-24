@@ -7,7 +7,9 @@ class AppColors {
 
   // Backgrounds
   static const Color ink = Color(0xFF0F0B1A); // near-black plum, app background
-  static const Color midnight = Color(0xFF1A1428); // slightly lighter, scaffolds
+  static const Color midnight = Color(
+    0xFF1A1428,
+  ); // slightly lighter, scaffolds
   static const Color surface = Color(0xFF231A33); // cards / dialogs
   static const Color surfaceHigh = Color(0xFF2E2340); // elevated surfaces
 

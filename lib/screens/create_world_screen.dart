@@ -21,6 +21,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
   final _nameController = TextEditingController();
   final _genreController = TextEditingController();
   final _descriptionController = TextEditingController();
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -30,19 +31,30 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
+  Future<void> _submit() async {
+    if (_isSaving || !(_formKey.currentState?.validate() ?? false)) return;
 
-    final world = dataService.addWorld(
-      name: _nameController.text,
-      genre: _genreController.text,
-      description: _descriptionController.text,
-    );
+    setState(() => _isSaving = true);
 
-    Navigator.of(context).pushReplacementNamed(
-      AppRoutes.worldDashboard,
-      arguments: WorldRouteArgs(worldId: world.id),
-    );
+    try {
+      final world = await dataService.addWorld(
+        name: _nameController.text,
+        genre: _genreController.text,
+        description: _descriptionController.text,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed(
+        AppRoutes.worldDashboard,
+        arguments: WorldRouteArgs(worldId: world.id),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.createWorldFailed)),
+      );
+      setState(() => _isSaving = false);
+    }
   }
 
   String? _requiredValidator(String? value) {
@@ -99,7 +111,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
               ),
               const SizedBox(height: 28),
               FilledButton.icon(
-                onPressed: _submit,
+                onPressed: _isSaving ? null : _submit,
                 icon: const Icon(Icons.auto_awesome),
                 label: const Text(AppStrings.createAction),
               ),

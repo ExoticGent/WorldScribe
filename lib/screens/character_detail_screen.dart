@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
 import '../models/character.dart';
 import '../services/service_locator.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/loading_state.dart';
 
 /// Read-only detail view for a single character. Supports deletion via
 /// the overflow menu (with a confirmation dialog); full edit flow lands
@@ -17,10 +20,7 @@ class CharacterDetailScreen extends StatelessWidget {
   final String worldId;
   final String characterId;
 
-  Future<void> _confirmDelete(
-    BuildContext context,
-    Character character,
-  ) async {
+  Future<void> _confirmDelete(BuildContext context, Character character) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -45,12 +45,19 @@ class CharacterDetailScreen extends StatelessWidget {
     );
 
     if (confirmed == true) {
-      dataService.deleteCharacter(
-        worldId: worldId,
-        characterId: characterId,
-      );
-      if (context.mounted) {
-        Navigator.of(context).pop();
+      try {
+        await dataService.deleteCharacter(
+          worldId: worldId,
+          characterId: characterId,
+        );
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+      } catch (_) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.deleteCharacterFailed)),
+        );
       }
     }
   }
@@ -64,10 +71,19 @@ class CharacterDetailScreen extends StatelessWidget {
         listenable: data,
         builder: (context, _) {
           final character = data.characterById(worldId, characterId);
+          if (data.isLoading && character == null) {
+            return const LoadingState(label: AppStrings.loadingCharacter);
+          }
           if (character == null) {
             return Scaffold(
               appBar: AppBar(),
-              body: const Center(child: Text('Character not found')),
+              body: data.errorMessage != null
+                  ? EmptyState(
+                      icon: Icons.cloud_off_outlined,
+                      title: AppStrings.loadDataFailed,
+                      hint: data.errorMessage!,
+                    )
+                  : const Center(child: Text('Character not found')),
             );
           }
 
@@ -121,8 +137,7 @@ class CharacterDetailScreen extends StatelessWidget {
                         _Panel(
                           child: Text(
                             character.role,
-                            style:
-                                Theme.of(context).textTheme.titleMedium,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -133,10 +148,9 @@ class CharacterDetailScreen extends StatelessWidget {
                         _Panel(
                           child: Text(
                             character.description,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyLarge
-                                ?.copyWith(height: 1.55),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.copyWith(height: 1.55),
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -162,8 +176,18 @@ class CharacterDetailScreen extends StatelessWidget {
 
   static String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -235,9 +259,9 @@ class _SectionLabel extends StatelessWidget {
     return Text(
       label.toUpperCase(),
       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: AppColors.goldDeep,
-            letterSpacing: 1.5,
-          ),
+        color: AppColors.goldDeep,
+        letterSpacing: 1.5,
+      ),
     );
   }
 }

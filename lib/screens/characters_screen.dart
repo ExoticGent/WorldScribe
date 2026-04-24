@@ -7,6 +7,7 @@ import '../services/service_locator.dart';
 import '../widgets/add_character_sheet.dart';
 import '../widgets/character_card.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/loading_state.dart';
 
 /// List of characters for a world. Tapping a card opens the detail
 /// screen; the FAB opens a modal sheet to add a new character.
@@ -30,6 +31,16 @@ class CharactersScreen extends StatelessWidget {
         listenable: data,
         builder: (context, _) {
           final characters = data.charactersFor(worldId);
+          if (data.isLoading && characters.isEmpty) {
+            return const LoadingState(label: AppStrings.loadingCharacters);
+          }
+          if (data.errorMessage != null && characters.isEmpty) {
+            return EmptyState(
+              icon: Icons.cloud_off_outlined,
+              title: AppStrings.loadDataFailed,
+              hint: data.errorMessage!,
+            );
+          }
           if (characters.isEmpty) {
             return const EmptyState(
               icon: Icons.people_outline,

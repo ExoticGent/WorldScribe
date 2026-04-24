@@ -5,59 +5,61 @@ storytellers. Create **worlds**, **characters**, **locations**,
 **factions**, and **lore**; grow them with AI assistance (Gemini via a
 secure backend).
 
-See [`worldscribe_handover.md`](./worldscribe_handover.md) for the product brief.
+See [`worldscribe_handover.md`](./worldscribe_handover.md) for the
+product brief.
 
 ---
 
 ## Status
 
-Prototype — the Flutter UI is up and running against an in-memory mock
-data store. Firebase and Gemini are **not yet wired**; the next
-milestones pick them up.
+Prototype - the Flutter UI is running against a seeded in-memory mock
+store today. Firebase bootstrapping and a Firestore-backed service are
+now scaffolded, but a real Firebase project still needs platform
+configuration before the app can sync live data. Gemini is not wired
+yet.
 
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
-| 1. Flutter project scaffolding            | Done   |
-| 2. App theme + routing                    | Done   |
-| 3. Splash screen                          | Done   |
-| 4. Home / Worlds list                     | Done   |
-| 5. Create World                           | Done   |
-| 6. World Dashboard                        | Done   |
-| 7. Characters list + add-character sheet  | Done   |
-| 8. Character Detail (view + delete)       | Done   |
-| 9. Mock data service + tests              | Done   |
-| 10. Firebase (Auth + Firestore)           | Pending |
+| 1. Flutter project scaffolding            | Done |
+| 2. App theme + routing                    | Done |
+| 3. Splash screen                          | Done |
+| 4. Home / Worlds list                     | Done |
+| 5. Create World                           | Done |
+| 6. World Dashboard                        | Done |
+| 7. Characters list + add-character sheet  | Done |
+| 8. Character Detail (view + delete)       | Done |
+| 9. Mock data service + tests              | Done |
+| 10. Firebase (Auth + Firestore)           | In progress |
 | 11. Gemini Cloud Function integration     | Pending |
 
 ---
 
 ## Tech stack
 
-- **Frontend**: Flutter 3.11 / Dart 3.11 (Android-first, iOS targets
-  are scaffolded but untested)
-- **State management**: `ChangeNotifier` + `ListenableBuilder` — no
-  external state packages yet
-- **Backend** (planned): Firebase Auth, Firestore, Cloud Functions
-- **AI** (planned): Gemini API, called from a Cloud Function so the
-  key never ships in the app
+- **Frontend**: Flutter 3.11 / Dart 3.11
+- **State management**: `ChangeNotifier` + `ListenableBuilder`
+- **Backend**: Firebase Auth, Firestore, Cloud Functions
+- **AI**: Gemini API via a backend-only Cloud Function
 
 ---
 
 ## Project structure
 
-```
+```text
 lib/
   core/
     constants/      AppStrings, AppRoutes, typed RouteArgs
     theme/          AppColors (dark-fantasy palette), AppTheme
     router.dart     AppRouter.generate (onGenerateRoute)
   models/
-    world.dart      immutable World (+ copyWith/toJson/fromJson)
+    world.dart      immutable World
     character.dart  immutable Character
   services/
-    data_service.dart   singleton ChangeNotifier, in-memory store,
-                        seeded with two sample worlds. Swap-in point
-                        for Firestore.
+    worldscribe_data_service.dart  shared data contract
+    in_memory_data_service.dart    seeded mock store for local work/tests
+    firestore_data_service.dart    live Firebase implementation
+    app_bootstrap.dart             startup handoff: Firebase or mock fallback
+    service_locator.dart           active service + startup metadata
   screens/
     splash_screen.dart
     home_screen.dart
@@ -67,6 +69,7 @@ lib/
     character_detail_screen.dart
   widgets/
     empty_state.dart
+    loading_state.dart
     world_card.dart
     character_card.dart
     dashboard_tile.dart
@@ -74,10 +77,8 @@ lib/
   main.dart
 
 test/
-  services/data_service_test.dart   unit tests for DataService
-  widget_test.dart                  widget tests for core flows
-                                    (splash → home, create world,
-                                    add character, delete character)
+  services/data_service_test.dart
+  widget_test.dart
 ```
 
 ---
@@ -94,66 +95,53 @@ flutter run
 Quality gates:
 
 ```bash
-flutter analyze   # must be clean
-flutter test      # 11 tests, all green
+flutter analyze
+flutter test
 ```
 
 ---
 
-## Architecture notes (for the next agent)
+## Architecture notes
 
-- **Navigation** is entirely via named routes driven by
-  [`AppRouter.generate`](lib/core/router.dart). Every screen has one
-  constant in [`AppRoutes`](lib/core/constants/app_routes.dart); typed
-  argument objects live in
-  [`route_args.dart`](lib/core/constants/route_args.dart).
-- **Data access** goes through `DataService.instance` — a singleton
-  `ChangeNotifier`. Screens wrap reads in `ListenableBuilder` so they
-  rebuild on change. This surface (`worlds`, `charactersFor`,
-  `addWorld`, `addCharacter`, …) is deliberately shaped like the
-  Firestore operations we'll want later, so the swap to a
-  Firestore-backed implementation should be drop-in.
+- **Navigation** is entirely route-driven through
+  [`AppRouter.generate`](lib/core/router.dart).
+- **Data access** goes through the `dataService` service-locator getter.
+  Reads stay synchronous for the UI, while writes are async so the same
+  screens work with both the mock store and Firestore.
+- **Bootstrap** happens in
+  [`AppBootstrap`](lib/services/app_bootstrap.dart). If Firebase is
+  configured, the app signs in anonymously and uses Firestore.
+  Otherwise it falls back to seeded mock data and shows a small notice
+  on the Home screen.
 - **Seeded mock data** lives inside
-  [`DataService._seedMockData`](lib/services/data_service.dart). The
-  seed is reset between tests via the `@visibleForTesting`
-  `resetForTests()` helper.
-- **Theme**: single entry point in
-  [`AppTheme.dark`](lib/core/theme/app_theme.dart) with a shared
-  colour palette in
-  [`AppColors`](lib/core/theme/app_colors.dart). No `google_fonts`
-  dependency yet — stock Material 3 Typography is used.
-- **No API keys ship in the app.** When AI arrives, the Flutter app
-  will call a Cloud Function; the Gemini key stays server-side only.
+  [`InMemoryDataService`](lib/services/in_memory_data_service.dart) and
+  is reset between tests through `resetForTests()`.
+- **No API keys ship in the app.** Gemini is still planned as a
+  Cloud Function call so keys remain server-side.
 
-### Where to plug in Firebase
+### Finishing Firebase setup
 
-1. Add `firebase_core`, `cloud_firestore`, and `firebase_auth` to
-   `pubspec.yaml`, run `flutterfire configure`.
-2. Create `lib/services/firestore_data_service.dart` implementing the
-   same public surface as `DataService` (worlds / charactersFor /
-   addWorld / addCharacter / delete\*).
-3. Replace `DataService.instance` wiring in the screens with a small
-   service locator (or keep it a singleton but swap the type). The
-   UI code shouldn't need changes beyond that.
+1. Run `flutterfire configure` for the Firebase project you want to use.
+2. Commit the generated platform config files and `firebase_options.dart`.
+3. Enable Anonymous Auth in Firebase Authentication.
+4. Add Firestore security rules for `users/{uid}/worlds/{worldId}`.
+5. Re-run the app. `AppBootstrap` will automatically switch from the
+   mock service to `FirestoreDataService` once Firebase is configured.
 
 ### Where to plug in Gemini
 
-1. Create a Cloud Function (`functions/src/generateLore.ts`) that
-   takes a prompt, calls Gemini, validates the JSON response, and
-   writes to Firestore.
-2. Add a `lib/services/ai_service.dart` that invokes the function via
-   `cloud_functions`. Screens call `AiService.generateCharacter(...)`
-   etc.; no key is present on the client.
+1. Create a Cloud Function such as `functions/src/generateLore.ts`.
+2. Validate and normalize the model response to JSON server-side.
+3. Add a client `ai_service.dart` that calls the function; keep the API
+   key off the device.
 
 ---
 
 ## UI direction
 
-- Dark-fantasy journal: ink-dark backgrounds, aged-parchment text,
-  gold accents.
-- Card-based layouts throughout.
-- Material 3 components with a custom `ThemeData` — no third-party
-  UI kits.
+- Dark-fantasy journal mood
+- Card-based layouts
+- Material 3 with a custom theme
 
 ---
 
@@ -169,5 +157,3 @@ Conventional, human-readable, imperative:
 - `Add World Dashboard screen`
 - `Add Characters screen with add-character bottom sheet`
 - `Add Character Detail screen with delete flow`
-
-Each milestone is one commit, pushed to `main`.

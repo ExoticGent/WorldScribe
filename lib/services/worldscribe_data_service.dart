@@ -14,21 +14,27 @@ import '../models/world.dart';
 /// Implementations must extend [ChangeNotifier] so screens can wrap
 /// reads in `ListenableBuilder` and rebuild on change.
 abstract class WorldscribeDataService extends ChangeNotifier {
+  bool get isLoading;
+
+  String? get errorMessage;
+
+  Future<void> initialize();
+
   // -- Worlds ---------------------------------------------------------------
 
   List<World> get worlds;
 
   World? worldById(String id);
 
-  World addWorld({
+  Future<World> addWorld({
     required String name,
     required String genre,
     required String description,
   });
 
-  void updateWorld(World updated);
+  Future<void> updateWorld(World updated);
 
-  void deleteWorld(String id);
+  Future<void> deleteWorld(String id);
 
   // -- Characters -----------------------------------------------------------
 
@@ -36,16 +42,16 @@ abstract class WorldscribeDataService extends ChangeNotifier {
 
   Character? characterById(String worldId, String characterId);
 
-  Character addCharacter({
+  Future<Character> addCharacter({
     required String worldId,
     required String name,
     required String role,
     required String description,
   });
 
-  void updateCharacter(Character updated);
+  Future<void> updateCharacter(Character updated);
 
-  void deleteCharacter({
+  Future<void> deleteCharacter({
     required String worldId,
     required String characterId,
   });

@@ -18,11 +18,7 @@ class World {
   final String description;
   final DateTime createdAt;
 
-  World copyWith({
-    String? name,
-    String? genre,
-    String? description,
-  }) {
+  World copyWith({String? name, String? genre, String? description}) {
     return World(
       id: id,
       name: name ?? this.name,
@@ -33,20 +29,20 @@ class World {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'genre': genre,
-        'description': description,
-        'createdAt': createdAt.toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'genre': genre,
+    'description': description,
+    'createdAt': createdAt.toIso8601String(),
+  };
 
   factory World.fromJson(Map<String, dynamic> json) => World(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        genre: json['genre'] as String? ?? '',
-        description: json['description'] as String? ?? '',
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    name: json['name'] as String,
+    genre: json['genre'] as String? ?? '',
+    description: json['description'] as String? ?? '',
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 
   @override
   bool operator ==(Object other) =>
