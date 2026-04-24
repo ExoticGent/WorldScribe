@@ -43,6 +43,23 @@ void main() {
     expect(service.characterById(world.id, character.id)?.name, 'Witness');
   });
 
+  test('updateWorld changes the stored fields', () async {
+    final world = service.worlds.first;
+
+    await service.updateWorld(
+      world.copyWith(
+        name: 'Aerenthal Reforged',
+        genre: 'Epic fantasy',
+        description: 'Now with a rewritten court and cleaner map.',
+      ),
+    );
+
+    final updated = service.worldById(world.id);
+    expect(updated?.name, 'Aerenthal Reforged');
+    expect(updated?.genre, 'Epic fantasy');
+    expect(updated?.description, 'Now with a rewritten court and cleaner map.');
+  });
+
   test('deleteCharacter removes from the list', () async {
     final world = service.worlds.first;
     final character = await service.addCharacter(

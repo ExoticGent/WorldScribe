@@ -17,10 +17,7 @@ void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
     final binding = TestWidgetsFlutterBinding.instance;
-    binding.platformDispatcher.views.first.physicalSize = const Size(
-      900,
-      1600,
-    );
+    binding.platformDispatcher.views.first.physicalSize = const Size(900, 1600);
     binding.platformDispatcher.views.first.devicePixelRatio = 1.0;
   });
 
@@ -68,7 +65,9 @@ void main() {
 
   testWidgets('capture character detail preview', (tester) async {
     final world = InMemoryDataService.instance.worlds.first;
-    final character = InMemoryDataService.instance.charactersFor(world.id).first;
+    final character = InMemoryDataService.instance
+        .charactersFor(world.id)
+        .first;
 
     await tester.pumpWidget(
       _appAtRoute(

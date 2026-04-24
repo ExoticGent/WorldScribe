@@ -12,13 +12,12 @@ product brief.
 
 ## Status
 
-Prototype - the Flutter UI is running against a seeded in-memory mock
-store today. Firebase app configuration is now connected to the real
-`worldscribe-9c753` project, and Firestore rules/indexes have been
-deployed. The remaining backend cutover work is enabling an auth
-provider for sign-in and smoke-testing the live flows. Gemini is not
-wired yet. Web support is also scaffolded now for quick local UI
-testing.
+Prototype - the Flutter UI can now run live against the real
+`worldscribe-9c753` Firebase project with Anonymous Auth and Firestore
+enabled across Android, iOS, and web configuration. A seeded in-memory
+service still remains as a deliberate fallback when Firebase is
+unavailable, which keeps local work and tests resilient. Gemini is not
+wired yet.
 
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
@@ -31,7 +30,7 @@ testing.
 | 7. Characters list + add-character sheet  | Done |
 | 8. Character Detail (view + delete)       | Done |
 | 9. Mock data service + tests              | Done |
-| 10. Firebase (Auth + Firestore)           | In progress |
+| 10. Firebase (Auth + Firestore)           | Done |
 | 11. Gemini Cloud Function integration     | Pending |
 
 ---
@@ -138,14 +137,15 @@ flutter run -d edge
 - **No API keys ship in the app.** Gemini is still planned as a
   Cloud Function call so keys remain server-side.
 
-### Finishing Firebase setup
+### Firebase Follow-Up Hardening
 
-1. Enable Anonymous Auth in Firebase Authentication for
-   `worldscribe-9c753`.
-2. Smoke-test create/read/delete against the live backend on a device or
-   emulator.
-3. If startup still falls back to mock data, check Firebase console
-   propagation and auth settings first.
+1. Smoke-test create/edit/delete world and character flows on an Android
+   or iOS device/emulator, not just the browser build.
+2. If startup ever falls back to mock data unexpectedly, check Firebase
+   console configuration and platform app registration first.
+3. Consider App Check once broader external testing begins.
+4. Revisit Anonymous Auth later and disable it if a permanent sign-in
+   flow replaces guest access.
 
 ### Where to plug in Gemini
 

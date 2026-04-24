@@ -76,6 +76,65 @@ void main() {
     expect(find.text('Characters'), findsOneWidget);
   });
 
+  testWidgets('Edit world updates the dashboard details', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.worldDashboard,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit world'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'World name'),
+      'Aerenthal Reforged',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Changes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aerenthal Reforged'), findsWidgets);
+    expect(
+      InMemoryDataService.instance.worldById(world.id)?.name,
+      'Aerenthal Reforged',
+    );
+  });
+
+  testWidgets('Delete world from dashboard returns to Home', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        onGenerateRoute: AppRouter.generate,
+        initialRoute: AppRoutes.home,
+        onGenerateInitialRoutes: (_) => [
+          AppRouter.generate(const RouteSettings(name: AppRoutes.home)),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(world.name).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete world'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your Worlds'), findsOneWidget);
+    expect(InMemoryDataService.instance.worldById(world.id), isNull);
+  });
+
   testWidgets('Add character flow pushes a new row onto Characters', (
     tester,
   ) async {

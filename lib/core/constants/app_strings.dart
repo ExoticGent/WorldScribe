@@ -12,16 +12,22 @@ class AppStrings {
       'Tap the quill to scribe your first world.';
   static const String newWorld = 'New World';
 
-  // Create World
+  // Create / edit world
   static const String createWorldTitle = 'Forge a New World';
+  static const String editWorldTitle = 'Revise World';
   static const String worldNameLabel = 'World name';
-  static const String worldNameHint = 'e.g. Aerenthal, Kingdom of Ash…';
+  static const String worldNameHint = 'e.g. Aerenthal, Kingdom of Ash...';
   static const String worldGenreLabel = 'Genre';
-  static const String worldGenreHint = 'High fantasy, cyberpunk, post-apoc…';
+  static const String worldGenreHint = 'High fantasy, cyberpunk, post-apoc...';
   static const String worldDescriptionLabel = 'Description';
   static const String worldDescriptionHint =
-      'A short pitch for this world — the feeling, the stakes, the era.';
+      'A short pitch for this world - the feeling, the stakes, the era.';
   static const String createAction = 'Create World';
+  static const String saveWorldChanges = 'Save Changes';
+  static const String editWorldAction = 'Edit world';
+  static const String deleteWorldAction = 'Delete world';
+  static const String deleteWorldPrompt =
+      'This world and all of its characters will be removed. This cannot be undone.';
 
   // World Dashboard
   static const String charactersSection = 'Characters';
@@ -39,7 +45,7 @@ class AppStrings {
   static const String newCharacter = 'New Character';
   static const String characterNameLabel = 'Name';
   static const String characterRoleLabel = 'Role';
-  static const String characterRoleHint = 'Hero, mentor, antagonist…';
+  static const String characterRoleHint = 'Hero, mentor, antagonist...';
   static const String characterDescriptionLabel = 'Description';
   static const String characterDescriptionHint =
       'Appearance, personality, motivation.';
@@ -55,6 +61,10 @@ class AppStrings {
   static const String loadDataFailed = 'Unable to load your data right now.';
   static const String createWorldFailed =
       'Could not create the world. Try again.';
+  static const String updateWorldFailed =
+      'Could not update the world. Try again.';
+  static const String deleteWorldFailed =
+      'Could not delete the world. Try again.';
   static const String saveCharacterFailed =
       'Could not save the character. Try again.';
   static const String deleteCharacterFailed =

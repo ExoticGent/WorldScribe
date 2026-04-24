@@ -25,6 +25,10 @@ class AppRouter {
       case AppRoutes.createWorld:
         return _page(const CreateWorldScreen(), settings);
 
+      case AppRoutes.editWorld:
+        final args = _require<WorldRouteArgs>(settings);
+        return _page(CreateWorldScreen(worldId: args.worldId), settings);
+
       case AppRoutes.worldDashboard:
         final args = _require<WorldRouteArgs>(settings);
         return _page(WorldDashboardScreen(worldId: args.worldId), settings);

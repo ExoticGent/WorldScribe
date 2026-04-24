@@ -3,14 +3,15 @@ import 'package:flutter/material.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
+import '../models/world.dart';
 import '../services/service_locator.dart';
+import '../widgets/empty_state.dart';
 
-/// Form for creating a new [World]. On save, inserts into [DataService]
-/// and replaces this route with the new world's dashboard so the user
-/// lands inside the thing they just made rather than bouncing back to
-/// the empty home list.
+/// Form for creating or editing a [World].
 class CreateWorldScreen extends StatefulWidget {
-  const CreateWorldScreen({super.key});
+  const CreateWorldScreen({super.key, this.worldId});
+
+  final String? worldId;
 
   @override
   State<CreateWorldScreen> createState() => _CreateWorldScreenState();
@@ -22,6 +23,28 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
   final _genreController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isSaving = false;
+  World? _existingWorld;
+  bool _worldMissing = false;
+
+  bool get _isEditing => widget.worldId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final worldId = widget.worldId;
+    if (worldId == null) return;
+
+    final world = dataService.worldById(worldId);
+    if (world == null) {
+      _worldMissing = true;
+      return;
+    }
+
+    _existingWorld = world;
+    _nameController.text = world.name;
+    _genreController.text = world.genre;
+    _descriptionController.text = world.description;
+  }
 
   @override
   void dispose() {
@@ -37,6 +60,25 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
     setState(() => _isSaving = true);
 
     try {
+      if (_isEditing) {
+        final existingWorld = _existingWorld;
+        if (existingWorld == null) {
+          throw StateError('Cannot edit a world that does not exist.');
+        }
+
+        await dataService.updateWorld(
+          existingWorld.copyWith(
+            name: _nameController.text.trim(),
+            genre: _genreController.text.trim(),
+            description: _descriptionController.text.trim(),
+          ),
+        );
+
+        if (!mounted) return;
+        Navigator.of(context).pop();
+        return;
+      }
+
       final world = await dataService.addWorld(
         name: _nameController.text,
         genre: _genreController.text,
@@ -51,7 +93,13 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.createWorldFailed)),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? AppStrings.updateWorldFailed
+                : AppStrings.createWorldFailed,
+          ),
+        ),
       );
       setState(() => _isSaving = false);
     }
@@ -66,8 +114,23 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_worldMissing) {
+      return Scaffold(
+        appBar: AppBar(title: const Text(AppStrings.editWorldTitle)),
+        body: const EmptyState(
+          icon: Icons.public_off_outlined,
+          title: 'World not found',
+          hint: 'This world may have been removed before it could be edited.',
+        ),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.createWorldTitle)),
+      appBar: AppBar(
+        title: Text(
+          _isEditing ? AppStrings.editWorldTitle : AppStrings.createWorldTitle,
+        ),
+      ),
       body: SafeArea(
         child: Form(
           key: _formKey,
@@ -113,7 +176,11 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
               FilledButton.icon(
                 onPressed: _isSaving ? null : _submit,
                 icon: const Icon(Icons.auto_awesome),
-                label: const Text(AppStrings.createAction),
+                label: Text(
+                  _isEditing
+                      ? AppStrings.saveWorldChanges
+                      : AppStrings.createAction,
+                ),
               ),
             ],
           ),

@@ -6,6 +6,7 @@ class AppRoutes {
   static const String splash = '/';
   static const String home = '/home';
   static const String createWorld = '/create-world';
+  static const String editWorld = '/edit-world';
   static const String worldDashboard = '/world';
   static const String characters = '/world/characters';
   static const String characterDetail = '/character';

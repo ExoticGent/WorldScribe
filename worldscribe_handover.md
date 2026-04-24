@@ -8,14 +8,17 @@ developers, and storytellers.
 Current user-facing MVP flow:
 
 - Create a world
+- Edit a world
+- Delete a world
 - Browse worlds from the home screen
 - Open a world dashboard
 - Add characters to a world
 - View character details
 - Delete characters
 
-The UI is themed as a dark fantasy journal and currently runs cleanly in
-Flutter with a local seeded data source by default.
+The UI is themed as a dark fantasy journal and now runs cleanly against
+Firebase when available, with a local seeded fallback kept on purpose
+for resilience and testing.
 
 ---
 
@@ -24,13 +27,15 @@ Flutter with a local seeded data source by default.
 Implemented:
 
 - Flutter app shell, routing, theme, and splash screen
-- World list, world creation, and world dashboard
+- World list, world creation/edit/delete, and world dashboard
 - Characters list, add-character sheet, character detail, delete flow
 - In-memory seeded data service for local development and tests
 - Async-ready data abstraction for future backend integration
 - Firebase bootstrap scaffold with anonymous auth and Firestore service
+- Firebase web app wiring and live browser smoke-testing
 - Loading and error states for data-backed screens
 - Unit and widget tests covering the main MVP flows
+- Firestore service tests covering snapshot sync and CRUD persistence
 - Web platform scaffolding for quick browser-based testing
 - Golden-style visual preview snapshots for key screens
 
@@ -121,15 +126,21 @@ Current Firebase project:
 - Project ID: `worldscribe-9c753`
 - Android app ID: `1:625579797661:android:25ede5575cbceea4a07874`
 - iOS app ID: `1:625579797661:ios:dd176953c72ca3f4a07874`
+- Web app ID: `1:625579797661:web:8a0b0a54084eb5f4a07874`
 
-What still needs to happen before live Firebase works:
+Project-side Firebase setup completed:
 
-1. Enable Anonymous Auth in Firebase Authentication
-2. Smoke-test the live flows on a device/emulator
-3. Confirm startup no longer falls back to the in-memory mock
+1. Anonymous Auth enabled in Firebase Authentication
+2. Firestore rules and indexes deployed
+3. Firebase web app registered and wired into FlutterFire
+4. Live browser smoke test completed successfully
 
-Until those project-side steps are complete, the app intentionally falls
-back to in-memory mode.
+Remaining Firebase validation:
+
+1. Smoke-test create/edit/delete world and character flows on Android or
+   iOS hardware/emulator
+2. Confirm platform-specific builds do not unexpectedly fall back to the
+   in-memory mock
 
 Important long-term note:
 
@@ -176,10 +187,11 @@ Coverage currently includes:
 
 - Splash to home transition
 - Seeded worlds rendering
-- Create world flow
+- Create/edit/delete world flow
 - Add character flow
 - Delete character flow
 - In-memory service behavior
+- Firestore service behavior, snapshot sync, and CRUD persistence
 - Rendered visual previews for splash, home, world dashboard, and
   character detail
 
@@ -187,8 +199,11 @@ Coverage currently includes:
 
 ## Risks and gaps
 
-- Firebase app configuration and Firestore deployment are in place, but
-  auth provider setup may still block live sign-in
+- Anonymous auth is enabled for now, which is convenient for testing but
+  still expands the long-term auth surface
+- Browser-based Firebase testing is working, but Android/iOS device
+  validation is still recommended before calling the backend cutover
+  fully battle-tested
 - Anonymous auth is convenient for bootstrapping but may need upgrading
   later if named user accounts are required
 - Firestore delete currently removes a world's characters client-side by
@@ -200,11 +215,11 @@ Coverage currently includes:
 
 ## Recommended next steps
 
-1. Enable Anonymous Auth in the Firebase project
-2. Smoke-test create/read/delete against Firestore on device
-3. Add world editing and world deletion flows
-4. Start the Cloud Function + Gemini integration for AI generation
-5. Revisit Anonymous Auth later and disable it if permanent sign-in
+1. Smoke-test create/edit/delete world and character flows against
+   Firestore on Android or iOS
+2. Start the Cloud Function + Gemini integration for AI generation
+3. Expand locations, factions, lore, and AI Forge functionality
+4. Revisit Anonymous Auth later and disable it if permanent sign-in
    makes guest accounts unnecessary
 
 ---

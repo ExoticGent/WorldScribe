@@ -17,6 +17,47 @@ class WorldDashboardScreen extends StatelessWidget {
 
   final String worldId;
 
+  Future<void> _confirmDelete(BuildContext context, String worldName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Delete $worldName?'),
+        content: const Text(AppStrings.deleteWorldPrompt),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.emberRed),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await dataService.deleteWorld(worldId);
+      if (!context.mounted) return;
+
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) {
+        navigator.pop();
+      } else {
+        navigator.pushReplacementNamed(AppRoutes.home);
+      }
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.deleteWorldFailed)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = dataService;
@@ -50,6 +91,48 @@ class WorldDashboardScreen extends StatelessWidget {
                 pinned: true,
                 title: Text(world.name),
                 centerTitle: true,
+                actions: [
+                  PopupMenuButton<_WorldAction>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _WorldAction.edit:
+                          Navigator.of(context).pushNamed(
+                            AppRoutes.editWorld,
+                            arguments: WorldRouteArgs(worldId: world.id),
+                          );
+                        case _WorldAction.delete:
+                          _confirmDelete(context, world.name);
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _WorldAction.edit,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          leading: Icon(Icons.edit_outlined, size: 20),
+                          title: Text(AppStrings.editWorldAction),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: _WorldAction.delete,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: AppColors.emberRed,
+                            size: 20,
+                          ),
+                          title: Text(AppStrings.deleteWorldAction),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -113,6 +196,8 @@ class WorldDashboardScreen extends StatelessWidget {
     );
   }
 }
+
+enum _WorldAction { edit, delete }
 
 class _WorldHeader extends StatelessWidget {
   const _WorldHeader({required this.genre, required this.description});

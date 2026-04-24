@@ -72,5 +72,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'worldscribe-9c753.firebasestorage.app',
     measurementId: 'G-LTSMLWBEP8',
   );
-
 }
