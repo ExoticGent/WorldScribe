@@ -4,6 +4,7 @@ import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
 import '../models/generated_character.dart';
 import '../models/world.dart';
+import '../services/ai_forge_service.dart';
 import '../services/service_locator.dart';
 
 /// Bottom sheet for AI-assisted character generation.
@@ -60,6 +61,7 @@ class _AiForgeSheetState extends State<AiForgeSheet> {
     } catch (error) {
       if (!mounted) return;
       final message = switch (error) {
+        AiForgeException(:final message) when message.isNotEmpty => message,
         StateError(:final message) when message.isNotEmpty => message,
         _ => AppStrings.aiForgeFailed,
       };
