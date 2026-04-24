@@ -22,6 +22,11 @@ through a callable Cloud Function once the Gemini secret is set and the
 function is deployed. The next dashboard area is now live as well:
 Locations has a real list/add flow instead of a placeholder tile.
 
+Important note: live Gemini deployment is intentionally postponed for
+later. The current secure Firebase Functions + Secret Manager path needs
+the `worldscribe-9c753` project on the Blaze plan, so the code is ready
+but the backend rollout is deferred until that upgrade makes sense.
+
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
 | 1. Flutter project scaffolding            | Done |
@@ -167,6 +172,10 @@ flutter run -d edge
    flow replaces guest access.
 
 ### Deploying AI Forge
+
+This is intentionally postponed for a later stage right now because the
+secure Functions + Secret Manager setup requires the Firebase project to
+be on the Blaze plan.
 
 1. Set the Gemini secret with
    `firebase functions:secrets:set GEMINI_API_KEY`.

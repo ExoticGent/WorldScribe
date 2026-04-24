@@ -51,6 +51,14 @@ Not implemented yet:
 - Location detail/edit/delete flows
 - Factions, lore editing, and broader AI Forge functionality
 
+Important postponement note:
+
+- Live Gemini deployment is intentionally deferred to a later stage.
+- The current secure Firebase Functions + Secret Manager path requires
+  `worldscribe-9c753` to be on the Blaze plan.
+- The AI Forge code scaffold should stay in place, but do not ship the
+  Gemini key in the Flutter app as a workaround.
+
 ---
 
 ## Architecture
@@ -203,6 +211,9 @@ AI Forge Cloud Function shape:
 
 Deployment steps still required:
 
+These are intentionally postponed for now until the project is ready to
+move to Blaze billing.
+
 1. Run `firebase functions:secrets:set GEMINI_API_KEY`
 2. Run `firebase deploy --only functions:generateCharacter`
 3. Smoke-test AI Forge against the live backend
@@ -243,6 +254,8 @@ Coverage currently includes:
   fully battle-tested
 - AI Forge code is wired, but Gemini generation is not live until the
   `GEMINI_API_KEY` secret is set and the function is deployed
+- Live AI deployment is postponed on purpose for now because the secure
+  secret-backed Firebase Functions path requires Blaze billing
 - Locations are live for list/add, but there is not yet a dedicated
   location detail or edit/delete flow
 - Anonymous auth is convenient for bootstrapping but may need upgrading
@@ -259,11 +272,11 @@ Coverage currently includes:
 
 1. Smoke-test create/edit/delete world and character flows against
    Firestore on Android or iOS
-2. Set the Gemini secret and deploy `generateCharacter`
-3. Smoke-test AI Forge against the live backend
-4. Add a location detail/edit path
-5. Expand factions, lore, and broader AI Forge functionality
-4. Revisit Anonymous Auth later and disable it if permanent sign-in
+2. Add a location detail/edit path
+3. Expand factions, lore, and broader AI Forge functionality
+4. Revisit live AI deployment later if/when the project is moved to
+   Blaze and ready for Secret Manager-backed Functions
+5. Revisit Anonymous Auth later and disable it if permanent sign-in
    makes guest accounts unnecessary
 
 ---
