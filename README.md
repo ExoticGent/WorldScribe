@@ -17,7 +17,8 @@ store today. Firebase app configuration is now connected to the real
 `worldscribe-9c753` project, and Firestore rules/indexes have been
 deployed. The remaining backend cutover work is enabling an auth
 provider for sign-in and smoke-testing the live flows. Gemini is not
-wired yet.
+wired yet. Web support is also scaffolded now for quick local UI
+testing.
 
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
@@ -77,9 +78,15 @@ lib/
     add_character_sheet.dart
   main.dart
 
+web/
+  index.html
+  manifest.json
+  icons/
+
 test/
   services/data_service_test.dart
   widget_test.dart
+  visual_preview_test.dart
 
 firebase.json
 firestore.rules
@@ -102,6 +109,13 @@ Quality gates:
 ```bash
 flutter analyze
 flutter test
+flutter build web
+```
+
+Quick browser testing:
+
+```bash
+flutter run -d edge
 ```
 
 ---

@@ -31,6 +31,8 @@ Implemented:
 - Firebase bootstrap scaffold with anonymous auth and Firestore service
 - Loading and error states for data-backed screens
 - Unit and widget tests covering the main MVP flows
+- Web platform scaffolding for quick browser-based testing
+- Golden-style visual preview snapshots for key screens
 
 Not implemented yet:
 
@@ -74,6 +76,14 @@ lib/
     service_locator.dart
   firebase_options.dart
   main.dart
+web/
+  index.html
+  manifest.json
+  icons/
+test/
+  widget_test.dart
+  visual_preview_test.dart
+  goldens/
 ```
 
 Data flow:
@@ -151,6 +161,7 @@ Passing checks at handoff time:
 - `flutter analyze`
 - `flutter test`
 - `flutter build apk --debug`
+- `flutter build web`
 
 Coverage currently includes:
 
@@ -160,6 +171,8 @@ Coverage currently includes:
 - Add character flow
 - Delete character flow
 - In-memory service behavior
+- Rendered visual previews for splash, home, world dashboard, and
+  character detail
 
 ---
 
