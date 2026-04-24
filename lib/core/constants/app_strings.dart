@@ -27,7 +27,7 @@ class AppStrings {
   static const String editWorldAction = 'Edit world';
   static const String deleteWorldAction = 'Delete world';
   static const String deleteWorldPrompt =
-      'This world and all of its characters will be removed. This cannot be undone.';
+      'This world and all of its characters and locations will be removed. This cannot be undone.';
 
   // World Dashboard
   static const String charactersSection = 'Characters';

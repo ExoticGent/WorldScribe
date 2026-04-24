@@ -204,7 +204,7 @@ function normalizeCharacter(
 
 function sanitizeGeneratedText(value: unknown, maxLength: number): string {
   const text = readString(value).replace(/\s+/g, " ").trim();
-  if (text.length == 0) return "";
+  if (text.length === 0) return "";
   return text.length <= maxLength ? text : text.slice(0, maxLength).trim();
 }
 
@@ -214,7 +214,7 @@ function readString(value: unknown): string {
 
 function requireText(value: unknown, fieldName: string): string {
   const text = readString(value);
-  if (text.length == 0) {
+  if (text.length === 0) {
     throw new HttpsError(
       "invalid-argument",
       `Missing required field: ${fieldName}.`,

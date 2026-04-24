@@ -13,12 +13,12 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, write: if ownsUserDoc(userId);
 
-      match /worlds/{worldId} {
+      // Every subcollection beneath a user doc inherits the same
+      // ownership check. This covers worlds, their characters and
+      // locations, and any future modules (factions, lore) without
+      // needing new rule blocks each time.
+      match /{document=**} {
         allow read, write: if ownsUserDoc(userId);
-
-        match /characters/{characterId} {
-          allow read, write: if ownsUserDoc(userId);
-        }
       }
     }
   }

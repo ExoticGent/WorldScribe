@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/character.dart';
 import '../models/location.dart';
@@ -107,6 +108,8 @@ class FirestoreDataService extends WorldscribeDataService {
             }
           },
           onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Firestore worlds stream error: $error');
+            debugPrintStack(stackTrace: stackTrace);
             _isLoading = false;
             _errorMessage = 'Could not load your worlds from Firebase.';
             notifyListeners();
@@ -429,6 +432,8 @@ class FirestoreDataService extends WorldscribeDataService {
             notifyListeners();
           },
           onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Firestore characters stream error: $error');
+            debugPrintStack(stackTrace: stackTrace);
             _errorMessage = 'Could not load some characters from Firebase.';
             notifyListeners();
           },
@@ -452,6 +457,8 @@ class FirestoreDataService extends WorldscribeDataService {
             notifyListeners();
           },
           onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Firestore locations stream error: $error');
+            debugPrintStack(stackTrace: stackTrace);
             _errorMessage = 'Could not load some locations from Firebase.';
             notifyListeners();
           },
