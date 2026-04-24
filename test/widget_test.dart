@@ -7,11 +7,15 @@ import 'package:worldscribe/core/router.dart';
 import 'package:worldscribe/core/theme/app_theme.dart';
 import 'package:worldscribe/main.dart';
 import 'package:worldscribe/services/in_memory_data_service.dart';
+import 'package:worldscribe/services/service_locator.dart';
+
+import 'fake_ai_forge_service.dart';
 
 void main() {
   setUp(() async {
     InMemoryDataService.instance.resetForTests();
     await InMemoryDataService.instance.initialize();
+    configureAiForgeService(const FakeAiForgeService());
   });
 
   // Give the test surface a phone-sized window so popup menus, dialogs,
@@ -133,6 +137,38 @@ void main() {
 
     expect(find.text('Your Worlds'), findsOneWidget);
     expect(InMemoryDataService.instance.worldById(world.id), isNull);
+  });
+
+  testWidgets('AI Forge generates a character for the current world', (
+    tester,
+  ) async {
+    final world = InMemoryDataService.instance.worlds.first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.worldDashboard,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('AI Forge'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Prompt'),
+      'A palace archivist who trades in forbidden maps',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Generate Character'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Forged The Glass Archivist'), findsOneWidget);
+    expect(
+      InMemoryDataService.instance
+          .charactersFor(world.id)
+          .any((character) => character.name == 'The Glass Archivist'),
+      isTrue,
+    );
   });
 
   testWidgets('Add character flow pushes a new row onto Characters', (

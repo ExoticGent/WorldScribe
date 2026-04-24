@@ -35,6 +35,22 @@ class AppStrings {
   static const String factionsSection = 'Factions';
   static const String loreSection = 'Lore';
   static const String aiForge = 'AI Forge';
+  static const String aiForgeTitle = 'AI Forge';
+  static const String aiForgeIntro =
+      'Describe the kind of character you want, and WorldScribe will add one directly to this world.';
+  static const String aiForgePromptLabel = 'Prompt';
+  static const String aiForgePromptHint =
+      'e.g. A disgraced astronomer-priest who hears prophecies in whale song.';
+  static const String aiForgeGenerateCharacter = 'Generate Character';
+  static const String aiForgeUnavailableTitle = 'AI Forge unavailable';
+  static const String aiForgeUnavailableNotice =
+      'AI Forge needs the live Firebase + Cloud Functions backend before it can generate content.';
+  static const String aiForgeUnavailableHint =
+      'Deploy the generateCharacter function and keep Firebase enabled to use AI generation.';
+  static const String aiForgePromptEmptyHint =
+      'Tell AI Forge what kind of character to create.';
+  static const String aiForgeFailed =
+      'Could not forge a character right now. Try again.';
   static const String comingSoon = 'Coming soon';
 
   // Characters

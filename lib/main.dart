@@ -15,6 +15,7 @@ Future<void> main() async {
     mode: bootstrap.mode,
     startupNotice: bootstrap.notice,
   );
+  configureAiForgeService(bootstrap.aiForgeService);
   runApp(const WorldScribeApp());
 }
 

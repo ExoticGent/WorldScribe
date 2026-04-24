@@ -4,7 +4,9 @@ import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
 import '../core/theme/app_colors.dart';
+import '../models/world.dart';
 import '../services/service_locator.dart';
+import '../widgets/ai_forge_sheet.dart';
 import '../widgets/dashboard_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
@@ -16,6 +18,15 @@ class WorldDashboardScreen extends StatelessWidget {
   const WorldDashboardScreen({super.key, required this.worldId});
 
   final String worldId;
+
+  Future<void> _openAiForge(BuildContext context, World world) async {
+    final character = await AiForgeSheet.show(context, world);
+    if (character == null || !context.mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Forged ${character.name} for ${world.name}.')),
+    );
+  }
 
   Future<void> _confirmDelete(BuildContext context, String worldName) async {
     final confirmed = await showDialog<bool>(
@@ -183,8 +194,7 @@ class WorldDashboardScreen extends StatelessWidget {
                     DashboardTile(
                       icon: Icons.auto_awesome_outlined,
                       label: AppStrings.aiForge,
-                      onTap: null,
-                      comingSoon: true,
+                      onTap: () => _openAiForge(context, world),
                     ),
                   ]),
                 ),

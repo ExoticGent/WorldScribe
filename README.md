@@ -16,8 +16,10 @@ Prototype - the Flutter UI can now run live against the real
 `worldscribe-9c753` Firebase project with Anonymous Auth and Firestore
 enabled across Android, iOS, and web configuration. A seeded in-memory
 service still remains as a deliberate fallback when Firebase is
-unavailable, which keeps local work and tests resilient. Gemini is not
-wired yet.
+unavailable, which keeps local work and tests resilient. The first AI
+slice is now scaffolded too: `AI Forge` can generate a character
+through a callable Cloud Function once the Gemini secret is set and the
+function is deployed.
 
 | Milestone                                 | Status |
 | ----------------------------------------- | ------ |
@@ -31,7 +33,7 @@ wired yet.
 | 8. Character Detail (view + delete)       | Done |
 | 9. Mock data service + tests              | Done |
 | 10. Firebase (Auth + Firestore)           | Done |
-| 11. Gemini Cloud Function integration     | Pending |
+| 11. Gemini Cloud Function integration     | In progress |
 
 ---
 
@@ -55,12 +57,14 @@ lib/
   models/
     world.dart      immutable World
     character.dart  immutable Character
+    generated_character.dart  AI Forge response model
   services/
     worldscribe_data_service.dart  shared data contract
     in_memory_data_service.dart    seeded mock store for local work/tests
     firestore_data_service.dart    live Firebase implementation
+    ai_forge_service.dart          callable-function AI generation client
     app_bootstrap.dart             startup handoff: Firebase or mock fallback
-    service_locator.dart           active service + startup metadata
+    service_locator.dart           active data/AI services + startup metadata
   screens/
     splash_screen.dart
     home_screen.dart
@@ -75,7 +79,13 @@ lib/
     character_card.dart
     dashboard_tile.dart
     add_character_sheet.dart
+    ai_forge_sheet.dart
   main.dart
+
+functions/
+  src/index.ts     callable Gemini -> Firestore character generation
+  package.json
+  tsconfig.json
 
 web/
   index.html
@@ -126,6 +136,9 @@ flutter run -d edge
 - **Data access** goes through the `dataService` service-locator getter.
   Reads stay synchronous for the UI, while writes are async so the same
   screens work with both the mock store and Firestore.
+- **AI generation** goes through the `aiForgeService` service-locator
+  getter. In Firebase mode it calls the backend `generateCharacter`
+  function; otherwise the UI explains that AI Forge is unavailable.
 - **Bootstrap** happens in
   [`AppBootstrap`](lib/services/app_bootstrap.dart). If Firebase is
   configured, the app signs in anonymously and uses Firestore.
@@ -147,12 +160,16 @@ flutter run -d edge
 4. Revisit Anonymous Auth later and disable it if a permanent sign-in
    flow replaces guest access.
 
-### Where to plug in Gemini
+### Deploying AI Forge
 
-1. Create a Cloud Function such as `functions/src/generateLore.ts`.
-2. Validate and normalize the model response to JSON server-side.
-3. Add a client `ai_service.dart` that calls the function; keep the API
-   key off the device.
+1. Set the Gemini secret with
+   `firebase functions:secrets:set GEMINI_API_KEY`.
+2. Deploy the callable backend with
+   `firebase deploy --only functions:generateCharacter`.
+3. Open a world dashboard, tap `AI Forge`, and generate a character to
+   confirm the function writes into Firestore.
+4. Expand from character generation into lore, factions, and locations
+   after the first live slice is stable.
 
 ---
 

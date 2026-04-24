@@ -1,3 +1,4 @@
+import 'ai_forge_service.dart';
 import 'in_memory_data_service.dart';
 import 'worldscribe_data_service.dart';
 
@@ -11,12 +12,14 @@ import 'worldscribe_data_service.dart';
 /// (inside `main()` after `Firebase.initializeApp()`) with a
 /// `FirestoreDataService` instance. Screens need no changes.
 WorldscribeDataService _current = InMemoryDataService.instance;
+AiForgeService _currentAiForgeService = const UnavailableAiForgeService();
 DataServiceMode _currentMode = DataServiceMode.inMemory;
 String? _startupNotice;
 
 enum DataServiceMode { inMemory, firestore }
 
 WorldscribeDataService get dataService => _current;
+AiForgeService get aiForgeService => _currentAiForgeService;
 DataServiceMode get dataServiceMode => _currentMode;
 String? get dataServiceNotice => _startupNotice;
 
@@ -28,4 +31,8 @@ void configureDataService(
   _current = impl;
   _currentMode = mode;
   _startupNotice = startupNotice;
+}
+
+void configureAiForgeService(AiForgeService impl) {
+  _currentAiForgeService = impl;
 }

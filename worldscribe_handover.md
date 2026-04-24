@@ -12,6 +12,7 @@ Current user-facing MVP flow:
 - Delete a world
 - Browse worlds from the home screen
 - Open a world dashboard
+- Use AI Forge to generate a character
 - Add characters to a world
 - View character details
 - Delete characters
@@ -29,10 +30,13 @@ Implemented:
 - Flutter app shell, routing, theme, and splash screen
 - World list, world creation/edit/delete, and world dashboard
 - Characters list, add-character sheet, character detail, delete flow
+- AI Forge bottom sheet that generates one character into the current
+  world
 - In-memory seeded data service for local development and tests
 - Async-ready data abstraction for future backend integration
 - Firebase bootstrap scaffold with anonymous auth and Firestore service
 - Firebase web app wiring and live browser smoke-testing
+- Cloud Functions scaffold for Gemini-backed character generation
 - Loading and error states for data-backed screens
 - Unit and widget tests covering the main MVP flows
 - Firestore service tests covering snapshot sync and CRUD persistence
@@ -41,8 +45,8 @@ Implemented:
 
 Not implemented yet:
 
-- Gemini / AI generation flow
-- Locations, factions, lore editing, and AI Forge functionality
+- Live Gemini secret + function deployment
+- Locations, factions, lore editing, and broader AI Forge functionality
 
 ---
 
@@ -59,6 +63,7 @@ lib/
   models/
     world.dart
     character.dart
+    generated_character.dart
   screens/
     splash_screen.dart
     home_screen.dart
@@ -73,14 +78,20 @@ lib/
     character_card.dart
     dashboard_tile.dart
     add_character_sheet.dart
+    ai_forge_sheet.dart
   services/
     worldscribe_data_service.dart
     in_memory_data_service.dart
     firestore_data_service.dart
+    ai_forge_service.dart
     app_bootstrap.dart
     service_locator.dart
   firebase_options.dart
   main.dart
+functions/
+  src/index.ts
+  package.json
+  tsconfig.json
 web/
   index.html
   manifest.json
@@ -102,6 +113,8 @@ Important detail:
 
 - The UI reads synchronously through `dataService`, but writes are async.
 - That keeps the current screens simple while still supporting Firestore.
+- AI generation goes through a separate `aiForgeService` abstraction so
+  the UI can degrade cleanly when Firebase/Functions are unavailable.
 - If Firebase initialization fails, the app falls back to the mock store
   and shows a notice on the home screen.
 
@@ -172,6 +185,21 @@ users/
             createdAt
 ```
 
+AI Forge Cloud Function shape:
+
+- Callable function: `generateCharacter`
+- Input: `worldId`, `prompt`
+- Auth: requires Firebase Auth user
+- Behavior: reads the target world, asks Gemini for a structured
+  character, validates the JSON, writes the character into Firestore,
+  and returns the created payload to the client
+
+Deployment steps still required:
+
+1. Run `firebase functions:secrets:set GEMINI_API_KEY`
+2. Run `firebase deploy --only functions:generateCharacter`
+3. Smoke-test AI Forge against the live backend
+
 ---
 
 ## Testing
@@ -188,6 +216,7 @@ Coverage currently includes:
 - Splash to home transition
 - Seeded worlds rendering
 - Create/edit/delete world flow
+- AI Forge character generation flow with a fake service
 - Add character flow
 - Delete character flow
 - In-memory service behavior
@@ -204,12 +233,15 @@ Coverage currently includes:
 - Browser-based Firebase testing is working, but Android/iOS device
   validation is still recommended before calling the backend cutover
   fully battle-tested
+- AI Forge code is wired, but Gemini generation is not live until the
+  `GEMINI_API_KEY` secret is set and the function is deployed
 - Anonymous auth is convenient for bootstrapping but may need upgrading
   later if named user accounts are required
 - Firestore delete currently removes a world's characters client-side by
   batching subcollection deletes; large worlds may eventually need a
   server-side cleanup strategy
-- Gemini integration is still only planned, not started
+- AI Forge currently covers character generation only, not lore,
+  factions, or locations yet
 
 ---
 
@@ -217,8 +249,9 @@ Coverage currently includes:
 
 1. Smoke-test create/edit/delete world and character flows against
    Firestore on Android or iOS
-2. Start the Cloud Function + Gemini integration for AI generation
-3. Expand locations, factions, lore, and AI Forge functionality
+2. Set the Gemini secret and deploy `generateCharacter`
+3. Smoke-test AI Forge against the live backend
+4. Expand locations, factions, lore, and AI Forge functionality
 4. Revisit Anonymous Auth later and disable it if permanent sign-in
    makes guest accounts unnecessary
 

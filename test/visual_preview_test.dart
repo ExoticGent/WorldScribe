@@ -7,11 +7,15 @@ import 'package:worldscribe/core/router.dart';
 import 'package:worldscribe/core/theme/app_theme.dart';
 import 'package:worldscribe/main.dart';
 import 'package:worldscribe/services/in_memory_data_service.dart';
+import 'package:worldscribe/services/service_locator.dart';
+
+import 'fake_ai_forge_service.dart';
 
 void main() {
   setUp(() async {
     InMemoryDataService.instance.resetForTests();
     await InMemoryDataService.instance.initialize();
+    configureAiForgeService(const FakeAiForgeService());
   });
 
   setUpAll(() {

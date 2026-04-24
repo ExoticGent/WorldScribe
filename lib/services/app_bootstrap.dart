@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import '../core/constants/app_strings.dart';
 import '../firebase_options.dart';
+import 'ai_forge_service.dart';
 import 'firestore_data_service.dart';
 import 'in_memory_data_service.dart';
 import 'service_locator.dart';
@@ -13,11 +15,13 @@ import 'worldscribe_data_service.dart';
 class AppBootstrapResult {
   const AppBootstrapResult({
     required this.dataService,
+    required this.aiForgeService,
     required this.mode,
     this.notice,
   });
 
   final WorldscribeDataService dataService;
+  final AiForgeService aiForgeService;
   final DataServiceMode mode;
   final String? notice;
 }
@@ -51,6 +55,9 @@ class AppBootstrap {
 
       return AppBootstrapResult(
         dataService: service,
+        aiForgeService: FirebaseAiForgeService(
+          functions: FirebaseFunctions.instanceFor(region: 'us-central1'),
+        ),
         mode: DataServiceMode.firestore,
       );
     } catch (error, stackTrace) {
@@ -62,6 +69,9 @@ class AppBootstrap {
 
       return AppBootstrapResult(
         dataService: service,
+        aiForgeService: const UnavailableAiForgeService(
+          reason: AppStrings.aiForgeUnavailableNotice,
+        ),
         mode: DataServiceMode.inMemory,
         notice: AppStrings.backendFallbackNotice,
       );
