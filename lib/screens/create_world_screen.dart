@@ -4,6 +4,7 @@ import '../core/constants/app_input.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
+import '../core/forms/discard_changes_guard.dart';
 import '../core/forms/form_validators.dart';
 import '../models/world.dart';
 import '../services/service_locator.dart';
@@ -25,6 +26,7 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
   final _genreController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isSaving = false;
+  bool _isDirty = false;
   World? _existingWorld;
   bool _worldMissing = false;
 
@@ -34,7 +36,12 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
   void initState() {
     super.initState();
     final worldId = widget.worldId;
-    if (worldId == null) return;
+    if (worldId == null) {
+      _nameController.addListener(_onChanged);
+      _genreController.addListener(_onChanged);
+      _descriptionController.addListener(_onChanged);
+      return;
+    }
 
     final world = dataService.worldById(worldId);
     if (world == null) {
@@ -46,6 +53,10 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
     _nameController.text = world.name;
     _genreController.text = world.genre;
     _descriptionController.text = world.description;
+
+    _nameController.addListener(_onChanged);
+    _genreController.addListener(_onChanged);
+    _descriptionController.addListener(_onChanged);
   }
 
   @override
@@ -54,6 +65,35 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
     _genreController.dispose();
     _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _onChanged() {
+    final dirty = _computeDirty();
+    if (dirty != _isDirty) {
+      setState(() => _isDirty = dirty);
+    }
+  }
+
+  bool _computeDirty() {
+    final existing = _existingWorld;
+    if (existing == null) {
+      // Create mode: any non-blank field counts as work in progress.
+      return _nameController.text.trim().isNotEmpty ||
+          _genreController.text.trim().isNotEmpty ||
+          _descriptionController.text.trim().isNotEmpty;
+    }
+    // Edit mode: dirty iff any field diverged from the loaded world.
+    return _nameController.text.trim() != existing.name ||
+        _genreController.text.trim() != existing.genre ||
+        _descriptionController.text.trim() != existing.description;
+  }
+
+  Future<void> _onPopRequested(bool didPop, Object? result) async {
+    if (didPop || _isSaving) return;
+    final navigator = Navigator.of(context);
+    final shouldDiscard = await confirmDiscardChanges(context);
+    if (!mounted || !shouldDiscard) return;
+    navigator.pop();
   }
 
   Future<void> _submit() async {
@@ -120,75 +160,83 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _isEditing ? AppStrings.editWorldTitle : AppStrings.createWorldTitle,
+    return PopScope(
+      canPop: !_isDirty,
+      onPopInvokedWithResult: _onPopRequested,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _isEditing
+                ? AppStrings.editWorldTitle
+                : AppStrings.createWorldTitle,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-            children: [
-              TextFormField(
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.next,
-                autofocus: true,
-                maxLength: AppInput.maxNameLength,
-                validator: FormValidators.requiredWithMaxLength(
-                  AppInput.maxNameLength,
+        body: SafeArea(
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  textCapitalization: TextCapitalization.words,
+                  textInputAction: TextInputAction.next,
+                  autofocus: true,
+                  maxLength: AppInput.maxNameLength,
+                  validator: FormValidators.requiredWithMaxLength(
+                    AppInput.maxNameLength,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.worldNameLabel,
+                    hintText: AppStrings.worldNameHint,
+                    prefixIcon: Icon(Icons.public),
+                    counterText: '',
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  labelText: AppStrings.worldNameLabel,
-                  hintText: AppStrings.worldNameHint,
-                  prefixIcon: Icon(Icons.public),
-                  counterText: '',
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _genreController,
+                  textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.next,
+                  maxLength: AppInput.maxTaglineLength,
+                  validator: FormValidators.maxLength(
+                    AppInput.maxTaglineLength,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.worldGenreLabel,
+                    hintText: AppStrings.worldGenreHint,
+                    prefixIcon: Icon(Icons.local_fire_department_outlined),
+                    counterText: '',
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _genreController,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.next,
-                maxLength: AppInput.maxTaglineLength,
-                validator: FormValidators.maxLength(AppInput.maxTaglineLength),
-                decoration: const InputDecoration(
-                  labelText: AppStrings.worldGenreLabel,
-                  hintText: AppStrings.worldGenreHint,
-                  prefixIcon: Icon(Icons.local_fire_department_outlined),
-                  counterText: '',
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _descriptionController,
+                  textCapitalization: TextCapitalization.sentences,
+                  minLines: 4,
+                  maxLines: 8,
+                  maxLength: AppInput.maxDescriptionLength,
+                  validator: FormValidators.maxLength(
+                    AppInput.maxDescriptionLength,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: AppStrings.worldDescriptionLabel,
+                    hintText: AppStrings.worldDescriptionHint,
+                    alignLabelWithHint: true,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descriptionController,
-                textCapitalization: TextCapitalization.sentences,
-                minLines: 4,
-                maxLines: 8,
-                maxLength: AppInput.maxDescriptionLength,
-                validator: FormValidators.maxLength(
-                  AppInput.maxDescriptionLength,
+                const SizedBox(height: 28),
+                FilledButton.icon(
+                  onPressed: _isSaving ? null : _submit,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: Text(
+                    _isEditing
+                        ? AppStrings.saveWorldChanges
+                        : AppStrings.createAction,
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  labelText: AppStrings.worldDescriptionLabel,
-                  hintText: AppStrings.worldDescriptionHint,
-                  alignLabelWithHint: true,
-                ),
-              ),
-              const SizedBox(height: 28),
-              FilledButton.icon(
-                onPressed: _isSaving ? null : _submit,
-                icon: const Icon(Icons.auto_awesome),
-                label: Text(
-                  _isEditing
-                      ? AppStrings.saveWorldChanges
-                      : AppStrings.createAction,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

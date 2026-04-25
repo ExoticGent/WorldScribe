@@ -398,6 +398,138 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets(
+    'Back from Create World with no edits pops without prompting',
+    (tester) async {
+      await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
+      await tester.pumpAndSettle();
+
+      // Nothing typed -> PopScope.canPop is true -> the route just pops.
+      await Navigator.of(
+        tester.element(find.text('Forge a New World')),
+      ).maybePop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.text('Forge a New World'), findsNothing);
+      expect(find.text('Your Worlds'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Back from Create World with edits prompts; Keep editing keeps the form',
+    (tester) async {
+      await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'World name'),
+        'Half typed',
+      );
+      // Two pumps: the first runs the controller listener + setState, the
+      // second commits the new PopScope.canPop value into the framework.
+      await tester.pump();
+      await tester.pump();
+
+      await Navigator.of(
+        tester.element(find.text('Forge a New World')),
+      ).maybePop();
+      await tester.pumpAndSettle();
+
+      // PopScope intercepted the pop; the discard prompt is on screen.
+      expect(find.text('Discard changes?'), findsOneWidget);
+      expect(find.text('Forge a New World'), findsOneWidget);
+
+      // Keep editing keeps the form on screen with its draft intact.
+      await tester.tap(find.widgetWithText(TextButton, 'Keep editing'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard changes?'), findsNothing);
+      expect(find.text('Forge a New World'), findsOneWidget);
+      expect(find.text('Half typed'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Discarding from Create World pops back to the previous route',
+    (tester) async {
+      await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'World name'),
+        'Throwaway',
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await Navigator.of(
+        tester.element(find.text('Forge a New World')),
+      ).maybePop();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Discard'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Forge a New World'), findsNothing);
+      expect(find.text('Your Worlds'), findsOneWidget);
+      // No partial world was persisted.
+      expect(
+        InMemoryDataService.instance.worlds.any((w) => w.name == 'Throwaway'),
+        isFalse,
+      );
+    },
+  );
+
+  testWidgets(
+    'Discarding from the Add Character sheet closes the sheet without saving',
+    (tester) async {
+      final world = InMemoryDataService.instance.worlds.first;
+      final originalCount = InMemoryDataService.instance
+          .charactersFor(world.id)
+          .length;
+
+      await tester.pumpWidget(
+        _appAtRoute(
+          AppRoutes.characters,
+          arguments: WorldRouteArgs(worldId: world.id),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.widgetWithText(FloatingActionButton, 'New Character'),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Name'),
+        'Unfinished hero',
+      );
+      await tester.pump();
+      await tester.pump();
+
+      // Sheet title text exists alongside the FAB label, so disambiguate
+      // via the topmost form field's element.
+      await Navigator.of(
+        tester.element(find.widgetWithText(TextFormField, 'Name')),
+      ).maybePop();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard changes?'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Discard'));
+      await tester.pumpAndSettle();
+
+      // Sheet is gone (its name field unmounts), character was never saved.
+      expect(find.widgetWithText(TextFormField, 'Name'), findsNothing);
+      expect(
+        InMemoryDataService.instance.charactersFor(world.id).length,
+        originalCount,
+      );
+    },
+  );
 }
 
 Widget _appAtHome() => _appAtRoute(AppRoutes.home);
@@ -411,6 +543,21 @@ Widget _appAtRoute(String route, {Object? arguments}) {
       AppRouter.generate(
         RouteSettings(name: initialRoute, arguments: arguments),
       ),
+    ],
+  );
+}
+
+/// Builds an app whose initial route stack is Home → [top] so that the
+/// top route has somewhere to pop back to. Used by the discard-changes
+/// guard tests where popping the only route would exit the harness.
+Widget _appWithStack({required String top, Object? arguments}) {
+  return MaterialApp(
+    theme: AppTheme.dark,
+    onGenerateRoute: AppRouter.generate,
+    initialRoute: top,
+    onGenerateInitialRoutes: (_) => [
+      AppRouter.generate(const RouteSettings(name: AppRoutes.home)),
+      AppRouter.generate(RouteSettings(name: top, arguments: arguments)),
     ],
   );
 }

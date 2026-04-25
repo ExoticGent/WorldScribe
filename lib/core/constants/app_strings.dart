@@ -124,4 +124,11 @@ class AppStrings {
 
   // Validation
   static const String requiredField = 'Required';
+
+  // Form discard guard
+  static const String discardChangesTitle = 'Discard changes?';
+  static const String discardChangesMessage =
+      'Your edits will be lost if you leave this page.';
+  static const String discardChangesConfirm = 'Discard';
+  static const String keepEditing = 'Keep editing';
 }
