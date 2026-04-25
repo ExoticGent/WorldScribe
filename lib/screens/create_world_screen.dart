@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_input.dart';
 import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
 import '../core/constants/route_args.dart';
+import '../core/forms/form_validators.dart';
 import '../models/world.dart';
 import '../services/service_locator.dart';
 import '../widgets/empty_state.dart';
@@ -105,13 +107,6 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
     }
   }
 
-  String? _requiredValidator(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return AppStrings.requiredField;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_worldMissing) {
@@ -142,11 +137,15 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                 textCapitalization: TextCapitalization.words,
                 textInputAction: TextInputAction.next,
                 autofocus: true,
-                validator: _requiredValidator,
+                maxLength: AppInput.maxNameLength,
+                validator: FormValidators.requiredWithMaxLength(
+                  AppInput.maxNameLength,
+                ),
                 decoration: const InputDecoration(
                   labelText: AppStrings.worldNameLabel,
                   hintText: AppStrings.worldNameHint,
                   prefixIcon: Icon(Icons.public),
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: 16),
@@ -154,10 +153,13 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                 controller: _genreController,
                 textCapitalization: TextCapitalization.sentences,
                 textInputAction: TextInputAction.next,
+                maxLength: AppInput.maxTaglineLength,
+                validator: FormValidators.maxLength(AppInput.maxTaglineLength),
                 decoration: const InputDecoration(
                   labelText: AppStrings.worldGenreLabel,
                   hintText: AppStrings.worldGenreHint,
                   prefixIcon: Icon(Icons.local_fire_department_outlined),
+                  counterText: '',
                 ),
               ),
               const SizedBox(height: 16),
@@ -166,6 +168,10 @@ class _CreateWorldScreenState extends State<CreateWorldScreen> {
                 textCapitalization: TextCapitalization.sentences,
                 minLines: 4,
                 maxLines: 8,
+                maxLength: AppInput.maxDescriptionLength,
+                validator: FormValidators.maxLength(
+                  AppInput.maxDescriptionLength,
+                ),
                 decoration: const InputDecoration(
                   labelText: AppStrings.worldDescriptionLabel,
                   hintText: AppStrings.worldDescriptionHint,

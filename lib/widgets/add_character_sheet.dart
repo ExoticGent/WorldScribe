@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_input.dart';
 import '../core/constants/app_strings.dart';
+import '../core/forms/form_validators.dart';
 import '../core/theme/app_colors.dart';
 import '../models/character.dart';
 import '../services/service_locator.dart';
@@ -109,13 +111,6 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
     }
   }
 
-  String? _requiredValidator(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return AppStrings.requiredField;
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets;
@@ -156,10 +151,14 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
                   textCapitalization: TextCapitalization.words,
                   autofocus: !isEditing,
                   textInputAction: TextInputAction.next,
-                  validator: _requiredValidator,
+                  maxLength: AppInput.maxNameLength,
+                  validator: FormValidators.requiredWithMaxLength(
+                    AppInput.maxNameLength,
+                  ),
                   decoration: const InputDecoration(
                     labelText: AppStrings.characterNameLabel,
                     prefixIcon: Icon(Icons.person_outline),
+                    counterText: '',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -167,10 +166,15 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
                   controller: _roleController,
                   textCapitalization: TextCapitalization.sentences,
                   textInputAction: TextInputAction.next,
+                  maxLength: AppInput.maxTaglineLength,
+                  validator: FormValidators.maxLength(
+                    AppInput.maxTaglineLength,
+                  ),
                   decoration: const InputDecoration(
                     labelText: AppStrings.characterRoleLabel,
                     hintText: AppStrings.characterRoleHint,
                     prefixIcon: Icon(Icons.workspace_premium_outlined),
+                    counterText: '',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -179,6 +183,10 @@ class _AddCharacterSheetState extends State<AddCharacterSheet> {
                   textCapitalization: TextCapitalization.sentences,
                   minLines: 3,
                   maxLines: 6,
+                  maxLength: AppInput.maxDescriptionLength,
+                  validator: FormValidators.maxLength(
+                    AppInput.maxDescriptionLength,
+                  ),
                   decoration: const InputDecoration(
                     labelText: AppStrings.characterDescriptionLabel,
                     hintText: AppStrings.characterDescriptionHint,

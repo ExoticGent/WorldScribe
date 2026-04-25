@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_input.dart';
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
 import '../models/generated_character.dart';
@@ -152,6 +153,7 @@ class _AiForgeSheetState extends State<AiForgeSheet> {
                   textCapitalization: TextCapitalization.sentences,
                   minLines: 3,
                   maxLines: 6,
+                  maxLength: AppInput.maxAiPromptLength,
                   decoration: const InputDecoration(
                     labelText: AppStrings.aiForgePromptLabel,
                     hintText: AppStrings.aiForgePromptHint,
