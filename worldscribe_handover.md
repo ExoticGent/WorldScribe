@@ -1,76 +1,171 @@
 # WorldScribe Handover
 
+> Living handoff document. Read this first if you are picking the project
+> up cold. It describes what ships today, the patterns the codebase
+> commits to, and where to look next.
+
 ## Project overview
 
 WorldScribe is a mobile-first worldbuilding app for writers, game
-developers, and storytellers.
+developers, and storytellers. The UI is themed as a dark fantasy
+journal (Material 3, custom `AppColors` palette).
 
-Current user-facing MVP flow:
+It runs against Firebase when available and falls back to a seeded
+in-memory store for offline development, tests, and resilience when
+Firebase init fails.
 
-- Create a world
-- Edit a world
-- Delete a world
-- Browse worlds from the home screen
-- Open a world dashboard
-- Use AI Forge to generate a character
-- Add characters to a world
-- Add locations to a world
-- View character details
-- Delete characters
+Repo: github.com/ExoticGent/WorldScribe (branch `main`).
+Stack: Flutter (Dart SDK ^3.11.5), Firebase (Auth, Firestore, Functions),
+Cloud Functions/TypeScript scaffold for Gemini-backed AI Forge.
 
-The UI is themed as a dark fantasy journal and now runs cleanly against
-Firebase when available, with a local seeded fallback kept on purpose
-for resilience and testing.
+Workflow rules carried by this repo:
+
+- Build in small milestones, each shippable on its own.
+- Every milestone runs `flutter analyze` and `flutter test` clean before
+  it lands.
+- Commit + push to GitHub after each milestone. No big-bang changes.
+- Never ship API keys in the Flutter app — Gemini stays behind Functions.
 
 ---
 
-## Current status
+## Current MVP flow
 
-Implemented:
+Today the user can:
 
-- Flutter app shell, routing, theme, and splash screen
-- World list, world creation/edit/delete, and world dashboard
-- Characters list, add-character sheet, character detail, delete flow
-- Locations list and add-location sheet
-- AI Forge bottom sheet that generates one character into the current
-  world
-- In-memory seeded data service for local development and tests
-- Async-ready data abstraction for future backend integration
-- Firebase bootstrap scaffold with anonymous auth and Firestore service
-- Firebase web app wiring and live browser smoke-testing
-- Cloud Functions scaffold for Gemini-backed character generation
+- Create, edit, and delete a world
+- Browse worlds from the home screen and open a world dashboard
+- Add, edit, and delete characters in a world (via dual-mode sheet)
+- Add, edit, and delete locations in a world (via dual-mode sheet)
+- View character detail and location detail
+- Generate a character via the AI Forge sheet (wired against a Cloud
+  Function — currently behind a fake service in tests; see Firebase
+  status for live deployment notes)
+
+All forms validate input, cap text length, prompt before discarding
+unsaved edits, and confirm before deleting.
+
+---
+
+## Implemented
+
+App + UX:
+
+- App shell, routing, theme, splash screen
+- World list + dashboard
+- World create/edit/delete
+- Character add/edit/delete + character detail screen
+- Location add/edit/delete + location detail screen
+- AI Forge bottom sheet (character generation only, one entity at a time)
 - Loading and error states for data-backed screens
-- Unit and widget tests covering the main MVP flows
-- Firestore service tests covering snapshot sync and CRUD persistence
-- Web platform scaffolding for quick browser-based testing
-- Golden-style visual preview snapshots for key screens
 
-Not implemented yet:
+Foundation hardening (shared patterns the rest of the app builds on):
 
-- Live Gemini secret + function deployment
-- Location detail/edit/delete flows
-- Factions, lore editing, and broader AI Forge functionality
+- `AppInput` length budgets — single source of truth for max name /
+  tagline / description / AI prompt lengths. Used by every form's
+  `maxLength` and validator.
+- `FormValidators` (pure validator helpers) — `required`, `maxLength`,
+  `requiredWithMaxLength`. Every TextFormField in the app uses these so
+  required-field errors and length errors look identical everywhere.
+- `ConfirmDialog.show(...)` — the single destructive-confirmation
+  prompt. Used by every delete flow and the discard-changes guard.
+  Honors `isDestructive` to paint the confirm button in `emberRed`.
+- `confirmDiscardChanges(context)` (PopScope discard guard) — wraps
+  every form route in `PopScope(canPop: !_isDirty, ...)` so back gestures
+  and modal-sheet dismissals prompt before throwing away unsaved edits.
+  Lives at `lib/core/forms/discard_changes_guard.dart`.
+- Dual-mode form sheets — `AddCharacterSheet` and `AddLocationSheet`
+  take an optional `initial:` to switch between add and edit. The single
+  sheet handles both flows so create/edit visuals stay in sync.
+- Centralized strings — `AppStrings` holds every user-facing label so
+  copy changes are one-line edits.
 
-Important postponement note:
+Backend + data layer:
 
-- Live Gemini deployment is intentionally deferred to a later stage.
-- The current secure Firebase Functions + Secret Manager path requires
-  `worldscribe-9c753` to be on the Blaze plan.
-- The AI Forge code scaffold should stay in place, but do not ship the
-  Gemini key in the Flutter app as a workaround.
+- `WorldscribeDataService` abstraction with two implementations:
+  - `InMemoryDataService` (seeded; default fallback; `resetForTests()`
+    available behind `@visibleForTesting`)
+  - `FirestoreDataService` (real backend, `users/{uid}/worlds/...`)
+- `AppBootstrap` initializes Firebase, attempts anonymous sign-in,
+  installs the Firestore-backed data service. Falls back to the
+  in-memory store and exposes an error message on the home screen if
+  bootstrap fails.
+- Service-locator pattern via `dataService` and `aiForgeService` so
+  screens don't reach into concrete classes.
+- AI Forge wired through a separate `AiForgeService` so the UI degrades
+  cleanly when Functions are unavailable.
+
+Firebase integration:
+
+- `firebase_core`, `firebase_auth`, `cloud_firestore`, `cloud_functions`
+- Generated `lib/firebase_options.dart`
+- Android `google-services.json` and iOS `GoogleService-Info.plist`
+- `firebase.json`, `firestore.rules`, `firestore.indexes.json` (rules +
+  indexes deployed; rules cover subcollections)
+- Anonymous Auth enabled
+- Web app registered and verified via live browser smoke test
+- Cloud Functions scaffold (`functions/src/index.ts`) for the
+  `generateCharacter` callable
+
+Tests + quality gates (52 passing as of this handoff):
+
+- `flutter analyze` clean
+- `flutter test` — all green
+- `flutter build apk --debug` and `flutter build web` both succeed
+
+Test files:
+
+- `test/widget_test.dart` — main MVP flow coverage (splash → home,
+  seeded worlds, world CRUD, AI Forge with fake service, add character,
+  delete character, add location, edit character/location, discard-
+  changes prompts on world / character / location forms)
+- `test/services/data_service_test.dart` — in-memory service behavior
+- `test/services/firestore_data_service_test.dart` — Firestore service
+  snapshot sync and CRUD (uses `fake_cloud_firestore`)
+- `test/widgets/confirm_dialog_test.dart` — destructive vs non-
+  destructive styling, confirm/cancel/scrim-dismiss return values
+- `test/core/forms/form_validators_test.dart` — required, maxLength,
+  requiredWithMaxLength
+- `test/visual_preview_test.dart` + `test/goldens/` — golden-style
+  snapshots for splash, home, world dashboard, character detail
+- `test/fake_ai_forge_service.dart` — shared fake for AI Forge
+
+---
+
+## Not implemented yet
+
+- Live Gemini secret + Function deployment (intentionally postponed —
+  needs Blaze billing on `worldscribe-9c753`; see "AI Forge live
+  deployment" below)
+- Faction system, lore editor, broader AI Forge (locations, lore,
+  factions all still TODO)
+- Permanent (non-anonymous) sign-in flow
+- Server-side cleanup for very large world deletes (currently client-
+  side batched subcollection delete)
+- Android / iOS device smoke test against live Firestore (web smoke
+  test passed; native still recommended before declaring backend cutover
+  battle-tested)
 
 ---
 
 ## Architecture
 
-App structure:
+### Directory layout
 
 ```text
 lib/
   core/
     constants/
+      app_input.dart          # max-length budgets for every text field
+      app_routes.dart         # named-route constants
+      app_strings.dart        # every user-facing string
+      route_args.dart         # typed route argument records
+    forms/
+      discard_changes_guard.dart  # confirmDiscardChanges(context)
+      form_validators.dart        # FormValidators.required / maxLength
     theme/
-    router.dart
+      app_colors.dart
+      app_theme.dart
+    router.dart               # AppRouter.generate
   models/
     world.dart
     character.dart
@@ -79,109 +174,106 @@ lib/
   screens/
     splash_screen.dart
     home_screen.dart
-    create_world_screen.dart
+    create_world_screen.dart            # also handles world edit
     world_dashboard_screen.dart
     characters_screen.dart
-    locations_screen.dart
     character_detail_screen.dart
+    locations_screen.dart
+    location_detail_screen.dart
   widgets/
+    add_character_sheet.dart            # add + edit (dual mode)
+    add_location_sheet.dart             # add + edit (dual mode)
+    ai_forge_sheet.dart
+    character_card.dart
+    confirm_dialog.dart                 # ConfirmDialog.show
+    dashboard_tile.dart
     empty_state.dart
     loading_state.dart
-    world_card.dart
-    character_card.dart
-    dashboard_tile.dart
-    add_character_sheet.dart
-    add_location_sheet.dart
     location_card.dart
-    ai_forge_sheet.dart
+    world_card.dart
   services/
-    worldscribe_data_service.dart
-    in_memory_data_service.dart
-    firestore_data_service.dart
     ai_forge_service.dart
     app_bootstrap.dart
-    service_locator.dart
+    firestore_data_service.dart
+    in_memory_data_service.dart
+    service_locator.dart                # `dataService`, `aiForgeService`
+    worldscribe_data_service.dart       # abstract base class
   firebase_options.dart
   main.dart
+
 functions/
-  src/index.ts
+  src/index.ts                # generateCharacter callable scaffold
   package.json
   tsconfig.json
+
 web/
   index.html
   manifest.json
   icons/
+
 test/
-  widget_test.dart
-  visual_preview_test.dart
+  core/forms/form_validators_test.dart
+  services/data_service_test.dart
+  services/firestore_data_service_test.dart
+  widgets/confirm_dialog_test.dart
+  fake_ai_forge_service.dart
   goldens/
+  visual_preview_test.dart
+  widget_test.dart
+
+firebase.json
+firestore.rules
+firestore.indexes.json
 ```
 
-Data flow:
+### Data flow
 
+```
 Flutter UI
--> `AppBootstrap`
--> `WorldscribeDataService`
--> either `InMemoryDataService` or `FirestoreDataService`
+  -> dataService (service locator)
+  -> WorldscribeDataService (abstract)
+  -> InMemoryDataService  OR  FirestoreDataService
 
-Important detail:
+AI generation:
+Flutter UI -> aiForgeService -> Cloud Function `generateCharacter`
+  -> Gemini -> Firestore write -> returns payload
+```
 
-- The UI reads synchronously through `dataService`, but writes are async.
-- That keeps the current screens simple while still supporting Firestore.
-- AI generation goes through a separate `aiForgeService` abstraction so
-  the UI can degrade cleanly when Firebase/Functions are unavailable.
-- If Firebase initialization fails, the app falls back to the mock store
-  and shows a notice on the home screen.
+Important detail: the UI **reads synchronously** through `dataService`
+(via `ListenableBuilder` on the data service as a `ChangeNotifier`),
+but **writes are async**. That keeps screens simple while still
+supporting Firestore round-trips. If Firebase init fails, the app falls
+back to the in-memory store and shows a notice on the home screen.
 
----
+### Form pattern (current contract for every editable form)
 
-## Firebase status
+Every form route in the app — `CreateWorldScreen`, `AddCharacterSheet`,
+`AddLocationSheet` — follows the same shape:
 
-The codebase now contains:
+1. `final _formKey = GlobalKey<FormState>();`
+2. `TextEditingController` per field, attached `_onChanged` listeners
+   in `initState` (in edit mode, attach **after** pre-fill so dirty is
+   false on entry).
+3. `bool _isDirty = false;` updated by `_onChanged` → `_computeDirty`.
+   - Add mode: dirty if any field has any non-blank text.
+   - Edit mode: dirty if any field's trimmed value differs from the
+     `initial` (or `_existingWorld`).
+4. Wrapped in `PopScope(canPop: !_isDirty, onPopInvokedWithResult:
+   _onPopRequested)`. `_onPopRequested` calls
+   `confirmDiscardChanges(context)` and pops manually if the user
+   confirms.
+5. Validators come from `FormValidators` and length caps from
+   `AppInput`. `counterText: ''` on InputDecoration so the counter chip
+   stays hidden.
+6. Submit sets `_isSaving = true`, validates, awaits the data-service
+   call, then `Navigator.pop(resultId)` with the saved entity's id (or
+   pushes a new dashboard for world creation). On error, shows a
+   SnackBar from `AppStrings` and clears `_isSaving`.
 
-- `firebase_core`, `firebase_auth`, and `cloud_firestore`
-- `AppBootstrap` startup wiring
-- Anonymous sign-in attempt during bootstrap
-- Firestore-backed data service under `users/{uid}/worlds/{worldId}`
-- Real generated `lib/firebase_options.dart`
-- `android/app/google-services.json`
-- `ios/Runner/GoogleService-Info.plist`
-- Local `firebase.json`, `firestore.rules`, and `firestore.indexes.json`
-- Deployed Firestore rules and indexes on the default database
+When you add the next form (factions, lore, etc.), copy this shape
+exactly. Anything new should slot in without inventing a new pattern.
 
-Current Firebase project:
-
-- Project ID: `worldscribe-9c753`
-- Android app ID: `1:625579797661:android:25ede5575cbceea4a07874`
-- iOS app ID: `1:625579797661:ios:dd176953c72ca3f4a07874`
-- Web app ID: `1:625579797661:web:8a0b0a54084eb5f4a07874`
-
-Project-side Firebase setup completed:
-
-1. Anonymous Auth enabled in Firebase Authentication
-2. Firestore rules and indexes deployed
-3. Firebase web app registered and wired into FlutterFire
-4. Live browser smoke test completed successfully
-
-Remaining Firebase validation:
-
-1. Smoke-test create/edit/delete world and character flows on Android or
-   iOS hardware/emulator
-2. Confirm platform-specific builds do not unexpectedly fall back to the
-   in-memory mock
-
-Important long-term note:
-
-- Anonymous Auth is acceptable here as a short-term development and
-  testing bridge.
-- Once WorldScribe has a real sign-in flow, revisit whether Anonymous
-  Auth is still needed.
-- If guest accounts are no longer needed, disable Anonymous Auth in
-  Firebase Authentication so the long-term auth surface stays tighter.
-
----
-
-## Firestore shape
+### Firestore shape
 
 ```text
 users/
@@ -198,92 +290,145 @@ users/
             role
             description
             createdAt
+        locations/
+          {locationId}/
+            name
+            type
+            description
+            createdAt
 ```
-
-AI Forge Cloud Function shape:
-
-- Callable function: `generateCharacter`
-- Input: `worldId`, `prompt`
-- Auth: requires Firebase Auth user
-- Behavior: reads the target world, asks Gemini for a structured
-  character, validates the JSON, writes the character into Firestore,
-  and returns the created payload to the client
-
-Deployment steps still required:
-
-These are intentionally postponed for now until the project is ready to
-move to Blaze billing.
-
-1. Run `firebase functions:secrets:set GEMINI_API_KEY`
-2. Run `firebase deploy --only functions:generateCharacter`
-3. Smoke-test AI Forge against the live backend
 
 ---
 
-## Testing
+## Firebase status
 
-Passing checks at handoff time:
+Project:
 
-- `flutter analyze`
-- `flutter test`
-- `flutter build apk --debug`
-- `flutter build web`
+- Project ID: `worldscribe-9c753`
+- Android app ID: `1:625579797661:android:25ede5575cbceea4a07874`
+- iOS app ID: `1:625579797661:ios:dd176953c72ca3f4a07874`
+- Web app ID: `1:625579797661:web:8a0b0a54084eb5f4a07874`
 
-Coverage currently includes:
+Done:
 
-- Splash to home transition
-- Seeded worlds rendering
-- Create/edit/delete world flow
-- AI Forge character generation flow with a fake service
-- Add location flow
-- Add character flow
-- Delete character flow
-- In-memory service behavior
-- Firestore service behavior, snapshot sync, and CRUD persistence
-- Rendered visual previews for splash, home, world dashboard, and
-  character detail
+1. Anonymous Auth enabled
+2. Firestore rules + indexes deployed (rules cover both `characters/`
+   and `locations/` subcollections)
+3. Web app registered and wired into FlutterFire
+4. Live browser smoke test passed
+
+Remaining Firebase validation:
+
+1. Smoke-test create/edit/delete world/character/location flows on
+   Android or iOS hardware/emulator
+2. Confirm platform builds don't unexpectedly fall back to the in-
+   memory mock
+
+Long-term auth note: Anonymous Auth is fine as a development bridge.
+Once a real sign-in flow exists, decide whether guest accounts are still
+worth supporting — if not, disable Anonymous Auth so the auth surface
+stays tighter.
+
+### AI Forge live deployment (postponed)
+
+The `generateCharacter` Cloud Function code is in place but is **not
+deployed live**. The secure path (Functions + Secret Manager-backed
+Gemini key) requires Blaze billing on `worldscribe-9c753`, which is
+intentionally deferred.
+
+Do **not** work around this by shipping the Gemini key in the Flutter
+app. The fake-service path is what the UI exercises in tests today;
+that's enough to keep the UI honest until billing flips.
+
+When ready:
+
+1. `firebase functions:secrets:set GEMINI_API_KEY`
+2. `firebase deploy --only functions:generateCharacter`
+3. Smoke-test AI Forge against the live backend
 
 ---
 
 ## Risks and gaps
 
-- Anonymous auth is enabled for now, which is convenient for testing but
-  still expands the long-term auth surface
-- Browser-based Firebase testing is working, but Android/iOS device
-  validation is still recommended before calling the backend cutover
-  fully battle-tested
-- AI Forge code is wired, but Gemini generation is not live until the
-  `GEMINI_API_KEY` secret is set and the function is deployed
-- Live AI deployment is postponed on purpose for now because the secure
-  secret-backed Firebase Functions path requires Blaze billing
-- Locations are live for list/add, but there is not yet a dedicated
-  location detail or edit/delete flow
-- Anonymous auth is convenient for bootstrapping but may need upgrading
-  later if named user accounts are required
-- Firestore delete currently removes a world's characters client-side by
-  batching subcollection deletes; large worlds may eventually need a
-  server-side cleanup strategy
-- AI Forge currently covers character generation only, not lore,
-  factions, or locations yet
+- Anonymous Auth is enabled (convenient for testing, expands long-term
+  auth surface)
+- Native (Android/iOS) device validation against live Firestore not yet
+  done; web is verified
+- AI Forge: Gemini path not live until secret is set + Function
+  deployed (postponed pending Blaze)
+- AI Forge today only generates characters — no locations/lore/factions
+- Large world deletes batch-delete subcollections client-side; will
+  need a server-side cleanup if worlds grow very large
+- No real sign-in flow yet (anonymous only)
 
 ---
 
 ## Recommended next steps
 
-1. Smoke-test create/edit/delete world and character flows against
-   Firestore on Android or iOS
-2. Add a location detail/edit path
-3. Expand factions, lore, and broader AI Forge functionality
-4. Revisit live AI deployment later if/when the project is moved to
-   Blaze and ready for Secret Manager-backed Functions
-5. Revisit Anonymous Auth later and disable it if permanent sign-in
-   makes guest accounts unnecessary
+Foreground (good next milestones — each fits the small-milestone rule):
+
+1. **Faction system** (model + screen + dual-mode add/edit sheet,
+   following the existing form pattern). Mirror the Location flow:
+   list screen → detail screen → add/edit sheet → delete via
+   `ConfirmDialog`.
+2. **Lore notes** (free-form long-text entries scoped to a world).
+   Same shape as factions but more description-heavy.
+3. **AI Forge expansion** — extend the `generateCharacter` callable
+   shape to also support locations and lore, with the UI choosing
+   which entity to forge.
+4. **Native device smoke test** — run create/edit/delete world,
+   character, and location flows against live Firestore on Android +
+   iOS, confirm no fallback to the mock store.
+5. **Sign-in flow** — replace anonymous-only with email/Google sign-in,
+   then revisit whether to disable Anonymous Auth.
+
+Background (quality / housekeeping):
+
+- Add tests for location edit and location delete (currently location
+  add and the discard-changes guard are covered; explicit edit + delete
+  cases for locations would round out parity with characters).
+- Consider an integration test that boots through `AppBootstrap` with
+  `fake_cloud_firestore` to exercise the real wiring end-to-end.
+- Revisit Anonymous Auth once a real sign-in flow exists.
+
+When the project flips to Blaze:
+
+- Set `GEMINI_API_KEY` secret, deploy `generateCharacter`, smoke-test
+  AI Forge live, then start expanding AI Forge beyond characters.
+
+---
+
+## Conventions for the next agent
+
+- **Follow the form pattern above** for any new editable form. Don't
+  reinvent dirty tracking, discard prompts, or validator shapes.
+- **Use `ConfirmDialog.show(...)`** for every destructive prompt
+  (delete, discard, overwrite). Pass `isDestructive: true` when the
+  action can't be undone.
+- **Pull strings from `AppStrings`** and length caps from `AppInput`.
+  If you need a new string or cap, add it to those files first, don't
+  inline literals.
+- **Pull validators from `FormValidators`**. New validation rules go
+  there, not on the screen.
+- **Read through the data service**, never directly through Firestore
+  or `InMemoryDataService`. Use `dataService` from the service locator.
+- **Small milestone rule**: ship one coherent change per commit. Run
+  `flutter analyze` and `flutter test` before each commit. Push after
+  every milestone.
+- **Don't ship the Gemini key in Flutter.** Ever. Functions only.
+- **Keep the in-memory fallback usable** — it is deliberate, supports
+  offline dev, drives the test suite, and is the resilience path when
+  Firebase init fails.
 
 ---
 
 ## Notes
 
-- Do not ship API keys in the Flutter app
-- Keep Gemini calls behind Cloud Functions or another backend layer
-- The in-memory fallback is deliberate and should stay usable for local
-  development and tests
+- Current date for this handoff: 2026-04-25.
+- Last shipped milestones (most recent first):
+  - PopScope discard-changes guard across all forms (`620748c`)
+  - Centralized destructive confirmations via `ConfirmDialog` (`d06d743`)
+  - Input length caps + centralized form validators (`252d548`)
+  - Character edit flow + unified detail scaffolding (`93ab7b9`)
+  - Location detail screen with edit + delete (`a792a51`)
+- 52 tests passing at handoff.
