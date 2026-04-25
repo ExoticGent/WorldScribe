@@ -66,6 +66,12 @@ class AppStrings {
   static const String characterDescriptionHint =
       'Appearance, personality, motivation.';
   static const String saveCharacter = 'Save Character';
+  static const String editCharacterTitle = 'Edit Character';
+  static const String saveCharacterChanges = 'Save Changes';
+  static const String editCharacterAction = 'Edit character';
+  static const String deleteCharacterAction = 'Delete character';
+  static const String deleteCharacterPrompt =
+      'This character will be removed from the world. This cannot be undone.';
 
   // Locations
   static const String locationsTitle = 'Locations';
@@ -105,6 +111,8 @@ class AppStrings {
       'Could not delete the world. Try again.';
   static const String saveCharacterFailed =
       'Could not save the character. Try again.';
+  static const String updateCharacterFailed =
+      'Could not update the character. Try again.';
   static const String saveLocationFailed =
       'Could not save the location. Try again.';
   static const String updateLocationFailed =

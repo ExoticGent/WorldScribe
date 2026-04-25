@@ -223,6 +223,44 @@ void main() {
     expect(find.text('The Unnamed'), findsOneWidget);
   });
 
+  testWidgets('Edit character from detail updates the card', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final character = InMemoryDataService.instance
+        .charactersFor(world.id)
+        .first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.characterDetail,
+        arguments: CharacterRouteArgs(
+          worldId: world.id,
+          characterId: character.id,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit character'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      '${character.name} Reforged',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Changes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('${character.name} Reforged'), findsWidgets);
+    expect(
+      InMemoryDataService.instance
+          .characterById(world.id, character.id)
+          ?.name,
+      '${character.name} Reforged',
+    );
+  });
+
   testWidgets('Delete from Character Detail removes the character', (
     tester,
   ) async {

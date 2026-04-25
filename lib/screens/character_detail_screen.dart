@@ -4,12 +4,13 @@ import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
 import '../models/character.dart';
 import '../services/service_locator.dart';
+import '../widgets/add_character_sheet.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 
-/// Read-only detail view for a single character. Supports deletion via
-/// the overflow menu (with a confirmation dialog); full edit flow lands
-/// in a later milestone.
+/// Detail view for a single character. Mirrors [LocationDetailScreen]:
+/// the overflow menu offers Edit (via the existing add-character sheet
+/// in edit mode) and Delete (with a confirmation dialog).
 class CharacterDetailScreen extends StatelessWidget {
   const CharacterDetailScreen({
     super.key,
@@ -20,16 +21,17 @@ class CharacterDetailScreen extends StatelessWidget {
   final String worldId;
   final String characterId;
 
+  Future<void> _openEdit(BuildContext context, Character character) async {
+    await AddCharacterSheet.show(context, worldId, initial: character);
+  }
+
   Future<void> _confirmDelete(BuildContext context, Character character) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: Text('Delete ${character.name}?'),
-        content: const Text(
-          'This character will be removed from the world. '
-          'This cannot be undone.',
-        ),
+        content: const Text(AppStrings.deleteCharacterPrompt),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -44,21 +46,20 @@ class CharacterDetailScreen extends StatelessWidget {
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        await dataService.deleteCharacter(
-          worldId: worldId,
-          characterId: characterId,
-        );
-        if (context.mounted) {
-          Navigator.of(context).pop();
-        }
-      } catch (_) {
-        if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text(AppStrings.deleteCharacterFailed)),
-        );
-      }
+    if (confirmed != true) return;
+
+    try {
+      await dataService.deleteCharacter(
+        worldId: worldId,
+        characterId: characterId,
+      );
+      if (!context.mounted) return;
+      Navigator.of(context).pop();
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.deleteCharacterFailed)),
+      );
     }
   }
 
@@ -66,28 +67,30 @@ class CharacterDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = dataService;
 
-    return Scaffold(
-      body: ListenableBuilder(
-        listenable: data,
-        builder: (context, _) {
-          final character = data.characterById(worldId, characterId);
-          if (data.isLoading && character == null) {
-            return const LoadingState(label: AppStrings.loadingCharacter);
-          }
-          if (character == null) {
-            return Scaffold(
-              appBar: AppBar(),
-              body: data.errorMessage != null
-                  ? EmptyState(
-                      icon: Icons.cloud_off_outlined,
-                      title: AppStrings.loadDataFailed,
-                      hint: data.errorMessage!,
-                    )
-                  : const Center(child: Text('Character not found')),
-            );
-          }
+    return ListenableBuilder(
+      listenable: data,
+      builder: (context, _) {
+        final character = data.characterById(worldId, characterId);
+        if (data.isLoading && character == null) {
+          return const Scaffold(
+            body: LoadingState(label: AppStrings.loadingCharacter),
+          );
+        }
+        if (character == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: data.errorMessage != null
+                ? EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: AppStrings.loadDataFailed,
+                    hint: data.errorMessage!,
+                  )
+                : const Center(child: Text('Character not found')),
+          );
+        }
 
-          return CustomScrollView(
+        return Scaffold(
+          body: CustomScrollView(
             slivers: [
               SliverAppBar(
                 pinned: true,
@@ -99,11 +102,23 @@ class CharacterDetailScreen extends StatelessWidget {
                     icon: const Icon(Icons.more_vert),
                     onSelected: (action) {
                       switch (action) {
+                        case _MenuAction.edit:
+                          _openEdit(context, character);
                         case _MenuAction.delete:
                           _confirmDelete(context, character);
                       }
                     },
                     itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _MenuAction.edit,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          visualDensity: VisualDensity.compact,
+                          leading: Icon(Icons.edit_outlined, size: 20),
+                          title: Text(AppStrings.editCharacterAction),
+                        ),
+                      ),
                       PopupMenuItem(
                         value: _MenuAction.delete,
                         child: ListTile(
@@ -115,7 +130,7 @@ class CharacterDetailScreen extends StatelessWidget {
                             color: AppColors.emberRed,
                             size: 20,
                           ),
-                          title: Text('Delete character'),
+                          title: Text(AppStrings.deleteCharacterAction),
                         ),
                       ),
                     ],
@@ -132,7 +147,7 @@ class CharacterDetailScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (character.role.isNotEmpty) ...[
-                        _SectionLabel(label: 'Role'),
+                        const _SectionLabel(label: 'Role'),
                         const SizedBox(height: 6),
                         _Panel(
                           child: Text(
@@ -143,7 +158,7 @@ class CharacterDetailScreen extends StatelessWidget {
                         const SizedBox(height: 18),
                       ],
                       if (character.description.isNotEmpty) ...[
-                        _SectionLabel(label: 'Description'),
+                        const _SectionLabel(label: 'Description'),
                         const SizedBox(height: 6),
                         _Panel(
                           child: Text(
@@ -155,7 +170,7 @@ class CharacterDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 18),
                       ],
-                      _SectionLabel(label: 'Scribed'),
+                      const _SectionLabel(label: 'Scribed'),
                       const SizedBox(height: 6),
                       _Panel(
                         child: Text(
@@ -168,9 +183,9 @@ class CharacterDetailScreen extends StatelessWidget {
                 ),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -193,7 +208,7 @@ class CharacterDetailScreen extends StatelessWidget {
   }
 }
 
-enum _MenuAction { delete }
+enum _MenuAction { edit, delete }
 
 class _DetailHeader extends StatelessWidget {
   const _DetailHeader({required this.character});

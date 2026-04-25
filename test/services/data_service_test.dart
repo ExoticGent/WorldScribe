@@ -75,6 +75,29 @@ void main() {
     expect(updated?.description, 'Now with a rewritten court and cleaner map.');
   });
 
+  test('updateCharacter changes the stored fields', () async {
+    final world = service.worlds.first;
+    final character = await service.addCharacter(
+      worldId: world.id,
+      name: 'Old Name',
+      role: 'Old Role',
+      description: 'A first draft.',
+    );
+
+    await service.updateCharacter(
+      character.copyWith(
+        name: 'New Name',
+        role: 'New Role',
+        description: 'Now with full backstory.',
+      ),
+    );
+
+    final updated = service.characterById(world.id, character.id);
+    expect(updated?.name, 'New Name');
+    expect(updated?.role, 'New Role');
+    expect(updated?.description, 'Now with full backstory.');
+  });
+
   test('updateLocation changes the stored fields', () async {
     final world = service.worlds.first;
     final location = await service.addLocation(

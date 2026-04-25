@@ -67,28 +67,30 @@ class LocationDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = dataService;
 
-    return Scaffold(
-      body: ListenableBuilder(
-        listenable: data,
-        builder: (context, _) {
-          final location = data.locationById(worldId, locationId);
-          if (data.isLoading && location == null) {
-            return const LoadingState(label: AppStrings.loadingLocation);
-          }
-          if (location == null) {
-            return Scaffold(
-              appBar: AppBar(),
-              body: data.errorMessage != null
-                  ? EmptyState(
-                      icon: Icons.cloud_off_outlined,
-                      title: AppStrings.loadDataFailed,
-                      hint: data.errorMessage!,
-                    )
-                  : const Center(child: Text('Location not found')),
-            );
-          }
+    return ListenableBuilder(
+      listenable: data,
+      builder: (context, _) {
+        final location = data.locationById(worldId, locationId);
+        if (data.isLoading && location == null) {
+          return const Scaffold(
+            body: LoadingState(label: AppStrings.loadingLocation),
+          );
+        }
+        if (location == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: data.errorMessage != null
+                ? EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: AppStrings.loadDataFailed,
+                    hint: data.errorMessage!,
+                  )
+                : const Center(child: Text('Location not found')),
+          );
+        }
 
-          return CustomScrollView(
+        return Scaffold(
+          body: CustomScrollView(
             slivers: [
               SliverAppBar(
                 pinned: true,
@@ -181,9 +183,9 @@ class LocationDetailScreen extends StatelessWidget {
                 ),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
