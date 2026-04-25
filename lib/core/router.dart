@@ -4,6 +4,7 @@ import '../screens/character_detail_screen.dart';
 import '../screens/characters_screen.dart';
 import '../screens/create_world_screen.dart';
 import '../screens/home_screen.dart';
+import '../screens/location_detail_screen.dart';
 import '../screens/locations_screen.dart';
 import '../screens/splash_screen.dart';
 import '../screens/world_dashboard_screen.dart';
@@ -48,6 +49,16 @@ class AppRouter {
           CharacterDetailScreen(
             worldId: args.worldId,
             characterId: args.characterId,
+          ),
+          settings,
+        );
+
+      case AppRoutes.locationDetail:
+        final args = _require<LocationRouteArgs>(settings);
+        return _page(
+          LocationDetailScreen(
+            worldId: args.worldId,
+            locationId: args.locationId,
           ),
           settings,
         );

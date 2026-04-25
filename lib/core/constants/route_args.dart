@@ -13,3 +13,10 @@ class CharacterRouteArgs {
   final String worldId;
   final String characterId;
 }
+
+class LocationRouteArgs {
+  const LocationRouteArgs({required this.worldId, required this.locationId});
+
+  final String worldId;
+  final String locationId;
+}

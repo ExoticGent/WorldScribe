@@ -256,6 +256,110 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets('Location detail shows the selected location', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final location = await InMemoryDataService.instance.addLocation(
+      worldId: world.id,
+      name: 'The Hollow Observatory',
+      type: 'Ruined spire',
+      description: 'A telescope nest perched above the ash storms.',
+    );
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.locationDetail,
+        arguments: LocationRouteArgs(
+          worldId: world.id,
+          locationId: location.id,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('The Hollow Observatory'), findsWidgets);
+    expect(find.text('Ruined spire'), findsOneWidget);
+    expect(
+      find.text('A telescope nest perched above the ash storms.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Edit location from detail updates the card', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final location = await InMemoryDataService.instance.addLocation(
+      worldId: world.id,
+      name: 'The Hollow Observatory',
+      type: 'Ruined spire',
+      description: 'Old.',
+    );
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.locationDetail,
+        arguments: LocationRouteArgs(
+          worldId: world.id,
+          locationId: location.id,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit location'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'The Hollow Observatory Reforged',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Changes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The Hollow Observatory Reforged'), findsWidgets);
+    expect(
+      InMemoryDataService.instance.locationById(world.id, location.id)?.name,
+      'The Hollow Observatory Reforged',
+    );
+  });
+
+  testWidgets('Delete from Location Detail removes the location', (
+    tester,
+  ) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final location = await InMemoryDataService.instance.addLocation(
+      worldId: world.id,
+      name: 'The Hollow Observatory',
+      type: 'Ruined spire',
+      description: 'Doomed.',
+    );
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.locationDetail,
+        arguments: LocationRouteArgs(
+          worldId: world.id,
+          locationId: location.id,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(location.name), findsWidgets);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete location'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(
+      InMemoryDataService.instance.locationById(world.id, location.id),
+      isNull,
+    );
+  });
 }
 
 Widget _appAtHome() => _appAtRoute(AppRoutes.home);

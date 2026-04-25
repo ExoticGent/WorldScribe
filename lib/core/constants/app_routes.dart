@@ -11,4 +11,5 @@ class AppRoutes {
   static const String characters = '/world/characters';
   static const String locations = '/world/locations';
   static const String characterDetail = '/character';
+  static const String locationDetail = '/location';
 }

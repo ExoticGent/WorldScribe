@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
+import '../core/constants/route_args.dart';
 import '../services/service_locator.dart';
 import '../widgets/add_location_sheet.dart';
 import '../widgets/empty_state.dart';
@@ -50,7 +52,19 @@ class LocationsScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
             itemCount: locations.length,
             separatorBuilder: (_, _) => const SizedBox(height: 10),
-            itemBuilder: (context, i) => LocationCard(location: locations[i]),
+            itemBuilder: (context, i) {
+              final location = locations[i];
+              return LocationCard(
+                location: location,
+                onTap: () => Navigator.of(context).pushNamed(
+                  AppRoutes.locationDetail,
+                  arguments: LocationRouteArgs(
+                    worldId: worldId,
+                    locationId: location.id,
+                  ),
+                ),
+              );
+            },
           );
         },
       ),

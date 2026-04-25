@@ -2,15 +2,28 @@ import 'package:flutter/material.dart';
 
 import '../core/constants/app_strings.dart';
 import '../core/theme/app_colors.dart';
+import '../models/location.dart';
 import '../services/service_locator.dart';
 
-/// Bottom sheet used on the Locations screen to add a new location.
+/// Bottom sheet used to add a new location or edit an existing one.
+///
+/// When [initial] is `null` the sheet operates in add mode and writes a
+/// fresh location into the world. When [initial] is supplied the sheet
+/// pre-fills its fields and saves through `updateLocation` instead so
+/// the same form serves both create and edit flows.
 class AddLocationSheet extends StatefulWidget {
-  const AddLocationSheet({super.key, required this.worldId});
+  const AddLocationSheet({super.key, required this.worldId, this.initial});
 
   final String worldId;
+  final Location? initial;
 
-  static Future<String?> show(BuildContext context, String worldId) {
+  bool get isEditing => initial != null;
+
+  static Future<String?> show(
+    BuildContext context,
+    String worldId, {
+    Location? initial,
+  }) {
     return showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -18,7 +31,7 @@ class AddLocationSheet extends StatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
-      builder: (_) => AddLocationSheet(worldId: worldId),
+      builder: (_) => AddLocationSheet(worldId: worldId, initial: initial),
     );
   }
 
@@ -34,6 +47,17 @@ class _AddLocationSheetState extends State<AddLocationSheet> {
   bool _isSaving = false;
 
   @override
+  void initState() {
+    super.initState();
+    final initial = widget.initial;
+    if (initial != null) {
+      _nameController.text = initial.name;
+      _typeController.text = initial.type;
+      _descriptionController.text = initial.description;
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _typeController.dispose();
@@ -46,20 +70,37 @@ class _AddLocationSheetState extends State<AddLocationSheet> {
 
     setState(() => _isSaving = true);
 
+    final initial = widget.initial;
     try {
-      final location = await dataService.addLocation(
-        worldId: widget.worldId,
-        name: _nameController.text,
-        type: _typeController.text,
-        description: _descriptionController.text,
-      );
+      final String resultId;
+      if (initial == null) {
+        final location = await dataService.addLocation(
+          worldId: widget.worldId,
+          name: _nameController.text,
+          type: _typeController.text,
+          description: _descriptionController.text,
+        );
+        resultId = location.id;
+      } else {
+        await dataService.updateLocation(
+          initial.copyWith(
+            name: _nameController.text.trim(),
+            type: _typeController.text.trim(),
+            description: _descriptionController.text.trim(),
+          ),
+        );
+        resultId = initial.id;
+      }
       if (!mounted) return;
-      Navigator.of(context).pop(location.id);
+      Navigator.of(context).pop(resultId);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(AppStrings.saveLocationFailed)),
-      );
+      final message = initial == null
+          ? AppStrings.saveLocationFailed
+          : AppStrings.updateLocationFailed;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       setState(() => _isSaving = false);
     }
   }
@@ -74,6 +115,7 @@ class _AddLocationSheetState extends State<AddLocationSheet> {
   @override
   Widget build(BuildContext context) {
     final viewInsets = MediaQuery.of(context).viewInsets;
+    final isEditing = widget.isEditing;
 
     return Padding(
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
@@ -99,14 +141,16 @@ class _AddLocationSheetState extends State<AddLocationSheet> {
                   ),
                 ),
                 Text(
-                  AppStrings.newLocation,
+                  isEditing
+                      ? AppStrings.editLocationTitle
+                      : AppStrings.newLocation,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 14),
                 TextFormField(
                   controller: _nameController,
                   textCapitalization: TextCapitalization.words,
-                  autofocus: true,
+                  autofocus: !isEditing,
                   textInputAction: TextInputAction.next,
                   validator: _requiredValidator,
                   decoration: const InputDecoration(
@@ -141,7 +185,11 @@ class _AddLocationSheetState extends State<AddLocationSheet> {
                 FilledButton.icon(
                   onPressed: _isSaving ? null : _submit,
                   icon: const Icon(Icons.check),
-                  label: const Text(AppStrings.saveLocation),
+                  label: Text(
+                    isEditing
+                        ? AppStrings.saveLocationChanges
+                        : AppStrings.saveLocation,
+                  ),
                 ),
               ],
             ),

@@ -80,6 +80,12 @@ class AppStrings {
   static const String locationDescriptionHint =
       'What is it like here, and why does it matter?';
   static const String saveLocation = 'Save Location';
+  static const String editLocationTitle = 'Edit Location';
+  static const String saveLocationChanges = 'Save Changes';
+  static const String editLocationAction = 'Edit location';
+  static const String deleteLocationAction = 'Delete location';
+  static const String deleteLocationPrompt =
+      'This location will be removed from the world. This cannot be undone.';
 
   // Data / bootstrap
   static const String backendFallbackNotice =
@@ -89,6 +95,7 @@ class AppStrings {
   static const String loadingCharacters = 'Gathering your cast...';
   static const String loadingLocations = 'Charting your map...';
   static const String loadingCharacter = 'Opening character...';
+  static const String loadingLocation = 'Opening location...';
   static const String loadDataFailed = 'Unable to load your data right now.';
   static const String createWorldFailed =
       'Could not create the world. Try again.';
@@ -100,6 +107,10 @@ class AppStrings {
       'Could not save the character. Try again.';
   static const String saveLocationFailed =
       'Could not save the location. Try again.';
+  static const String updateLocationFailed =
+      'Could not update the location. Try again.';
+  static const String deleteLocationFailed =
+      'Could not delete the location. Try again.';
   static const String deleteCharacterFailed =
       'Could not delete the character. Try again.';
 
