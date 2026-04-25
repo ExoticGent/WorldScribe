@@ -5,6 +5,7 @@ import '../core/theme/app_colors.dart';
 import '../models/location.dart';
 import '../services/service_locator.dart';
 import '../widgets/add_location_sheet.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 
@@ -26,27 +27,15 @@ class LocationDetailScreen extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, Location location) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Delete ${location.name}?'),
-        content: const Text(AppStrings.deleteLocationPrompt),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.emberRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Delete ${location.name}?',
+      message: AppStrings.deleteLocationPrompt,
+      confirmLabel: 'Delete',
+      isDestructive: true,
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     try {
       await dataService.deleteLocation(

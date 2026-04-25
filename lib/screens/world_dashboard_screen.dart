@@ -7,6 +7,7 @@ import '../core/theme/app_colors.dart';
 import '../models/world.dart';
 import '../services/service_locator.dart';
 import '../widgets/ai_forge_sheet.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/dashboard_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
@@ -29,27 +30,15 @@ class WorldDashboardScreen extends StatelessWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, String worldName) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: Text('Delete $worldName?'),
-        content: const Text(AppStrings.deleteWorldPrompt),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: AppColors.emberRed),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Delete $worldName?',
+      message: AppStrings.deleteWorldPrompt,
+      confirmLabel: 'Delete',
+      isDestructive: true,
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     try {
       await dataService.deleteWorld(worldId);
@@ -73,31 +62,33 @@ class WorldDashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final data = dataService;
 
-    return Scaffold(
-      body: ListenableBuilder(
-        listenable: data,
-        builder: (context, _) {
-          final world = data.worldById(worldId);
-          if (data.isLoading && world == null) {
-            return const LoadingState(label: AppStrings.loadingWorld);
-          }
-          if (world == null) {
-            return Scaffold(
-              appBar: AppBar(),
-              body: data.errorMessage != null
-                  ? EmptyState(
-                      icon: Icons.cloud_off_outlined,
-                      title: AppStrings.loadDataFailed,
-                      hint: data.errorMessage!,
-                    )
-                  : const Center(child: Text('World not found')),
-            );
-          }
+    return ListenableBuilder(
+      listenable: data,
+      builder: (context, _) {
+        final world = data.worldById(worldId);
+        if (data.isLoading && world == null) {
+          return const Scaffold(
+            body: LoadingState(label: AppStrings.loadingWorld),
+          );
+        }
+        if (world == null) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: data.errorMessage != null
+                ? EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: AppStrings.loadDataFailed,
+                    hint: data.errorMessage!,
+                  )
+                : const Center(child: Text('World not found')),
+          );
+        }
 
-          final characterCount = data.charactersFor(world.id).length;
-          final locationCount = data.locationsFor(world.id).length;
+        final characterCount = data.charactersFor(world.id).length;
+        final locationCount = data.locationsFor(world.id).length;
 
-          return CustomScrollView(
+        return Scaffold(
+          body: CustomScrollView(
             slivers: [
               SliverAppBar(
                 pinned: true,
@@ -204,9 +195,9 @@ class WorldDashboardScreen extends StatelessWidget {
                 ),
               ),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
