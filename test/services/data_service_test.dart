@@ -182,4 +182,182 @@ void main() {
 
     expect(callCount, greaterThanOrEqualTo(1));
   });
+
+  group('relationships', () {
+    test('linkCharacterAndLocation updates both sides', () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+
+      await service.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+
+      expect(
+        service.characterById(world.id, character.id)?.locationIds,
+        contains(location.id),
+      );
+      expect(
+        service.locationById(world.id, location.id)?.characterIds,
+        contains(character.id),
+      );
+    });
+
+    test('linking the same pair twice is a no-op', () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+
+      await service.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+      await service.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+
+      expect(
+        service
+            .characterById(world.id, character.id)
+            ?.locationIds
+            .where((id) => id == location.id)
+            .length,
+        1,
+      );
+      expect(
+        service
+            .locationById(world.id, location.id)
+            ?.characterIds
+            .where((id) => id == character.id)
+            .length,
+        1,
+      );
+    });
+
+    test('unlinkCharacterAndLocation removes the link from both sides',
+        () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+
+      await service.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+      await service.unlinkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+
+      expect(
+        service.characterById(world.id, character.id)?.locationIds,
+        isEmpty,
+      );
+      expect(
+        service.locationById(world.id, location.id)?.characterIds,
+        isEmpty,
+      );
+    });
+
+    test('deleting a character cascades the link off its locations',
+        () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+      await service.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+
+      await service.deleteCharacter(
+        worldId: world.id,
+        characterId: character.id,
+      );
+
+      expect(
+        service.locationById(world.id, location.id)?.characterIds,
+        isEmpty,
+      );
+    });
+
+    test('deleting a location cascades the link off its characters',
+        () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+      await service.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: location.id,
+      );
+
+      await service.deleteLocation(
+        worldId: world.id,
+        locationId: location.id,
+      );
+
+      expect(
+        service.characterById(world.id, character.id)?.locationIds,
+        isEmpty,
+      );
+    });
+  });
 }

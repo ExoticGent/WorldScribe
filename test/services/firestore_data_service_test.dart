@@ -375,4 +375,283 @@ void main() {
       isFalse,
     );
   });
+
+  group('relationships', () {
+    Future<({String worldId, String characterId, String locationId})>
+    seedLinkable() async {
+      await seedWorld(
+        id: 'world-rel',
+        name: 'Karr Reach',
+        genre: 'Fantasy',
+        description: 'A salt-bitten coastline of exiled houses.',
+        createdAt: DateTime.utc(2025, 5, 1),
+      );
+      await seedCharacter(
+        worldId: 'world-rel',
+        characterId: 'char-veyra',
+        name: 'Veyra',
+        role: 'Heir',
+        description: 'Last of the Morne bloodline.',
+        createdAt: DateTime.utc(2025, 5, 2),
+      );
+      await seedLocation(
+        worldId: 'world-rel',
+        locationId: 'loc-karr',
+        name: 'Karr',
+        type: 'Salt mine',
+        description: 'Where the heir was raised.',
+        createdAt: DateTime.utc(2025, 5, 3),
+      );
+      await service.initialize();
+      await settleFirestore();
+      return (
+        worldId: 'world-rel',
+        characterId: 'char-veyra',
+        locationId: 'loc-karr',
+      );
+    }
+
+    test('linkCharacterAndLocation writes both sides to Firestore', () async {
+      final ids = await seedLinkable();
+
+      await service.linkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+
+      expect(
+        service
+            .characterById(ids.worldId, ids.characterId)
+            ?.locationIds,
+        contains(ids.locationId),
+      );
+      expect(
+        service
+            .locationById(ids.worldId, ids.locationId)
+            ?.characterIds,
+        contains(ids.characterId),
+      );
+
+      final characterDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('characters')
+          .doc(ids.characterId)
+          .get();
+      final locationDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('locations')
+          .doc(ids.locationId)
+          .get();
+
+      expect(
+        (characterDoc.data()?['locationIds'] as List?)?.cast<String>(),
+        contains(ids.locationId),
+      );
+      expect(
+        (locationDoc.data()?['characterIds'] as List?)?.cast<String>(),
+        contains(ids.characterId),
+      );
+    });
+
+    test('linking the same pair twice keeps a single entry on each side',
+        () async {
+      final ids = await seedLinkable();
+
+      await service.linkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+      await service.linkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+
+      expect(
+        service
+            .characterById(ids.worldId, ids.characterId)
+            ?.locationIds
+            .where((id) => id == ids.locationId)
+            .length,
+        1,
+      );
+      expect(
+        service
+            .locationById(ids.worldId, ids.locationId)
+            ?.characterIds
+            .where((id) => id == ids.characterId)
+            .length,
+        1,
+      );
+
+      final characterDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('characters')
+          .doc(ids.characterId)
+          .get();
+      final locationDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('locations')
+          .doc(ids.locationId)
+          .get();
+      expect(
+        (characterDoc.data()?['locationIds'] as List?)
+            ?.cast<String>()
+            .where((id) => id == ids.locationId)
+            .length,
+        1,
+      );
+      expect(
+        (locationDoc.data()?['characterIds'] as List?)
+            ?.cast<String>()
+            .where((id) => id == ids.characterId)
+            .length,
+        1,
+      );
+    });
+
+    test('unlinkCharacterAndLocation clears both sides in Firestore', () async {
+      final ids = await seedLinkable();
+
+      await service.linkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+      await service.unlinkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+
+      expect(
+        service
+            .characterById(ids.worldId, ids.characterId)
+            ?.locationIds,
+        isEmpty,
+      );
+      expect(
+        service
+            .locationById(ids.worldId, ids.locationId)
+            ?.characterIds,
+        isEmpty,
+      );
+
+      final characterDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('characters')
+          .doc(ids.characterId)
+          .get();
+      final locationDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('locations')
+          .doc(ids.locationId)
+          .get();
+      expect(
+        (characterDoc.data()?['locationIds'] as List?)?.cast<String>() ??
+            const <String>[],
+        isEmpty,
+      );
+      expect(
+        (locationDoc.data()?['characterIds'] as List?)?.cast<String>() ??
+            const <String>[],
+        isEmpty,
+      );
+    });
+
+    test('deleting a linked character clears the inverse on its locations',
+        () async {
+      final ids = await seedLinkable();
+      await service.linkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+
+      await service.deleteCharacter(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+      );
+      await settleFirestore();
+
+      expect(
+        service
+            .locationById(ids.worldId, ids.locationId)
+            ?.characterIds,
+        isEmpty,
+      );
+
+      final locationDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('locations')
+          .doc(ids.locationId)
+          .get();
+      expect(
+        (locationDoc.data()?['characterIds'] as List?)?.cast<String>() ??
+            const <String>[],
+        isEmpty,
+      );
+      expect(
+        (await worldsRef()
+                .doc(ids.worldId)
+                .collection('characters')
+                .doc(ids.characterId)
+                .get())
+            .exists,
+        isFalse,
+      );
+    });
+
+    test('deleting a linked location clears the inverse on its characters',
+        () async {
+      final ids = await seedLinkable();
+      await service.linkCharacterAndLocation(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+
+      await service.deleteLocation(
+        worldId: ids.worldId,
+        locationId: ids.locationId,
+      );
+      await settleFirestore();
+
+      expect(
+        service
+            .characterById(ids.worldId, ids.characterId)
+            ?.locationIds,
+        isEmpty,
+      );
+
+      final characterDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('characters')
+          .doc(ids.characterId)
+          .get();
+      expect(
+        (characterDoc.data()?['locationIds'] as List?)?.cast<String>() ??
+            const <String>[],
+        isEmpty,
+      );
+      expect(
+        (await worldsRef()
+                .doc(ids.worldId)
+                .collection('locations')
+                .doc(ids.locationId)
+                .get())
+            .exists,
+        isFalse,
+      );
+    });
+  });
 }

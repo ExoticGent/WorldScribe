@@ -1,6 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 /// A single character belonging to a world.
+///
+/// [locationIds] holds ids of [Location]s this character is associated
+/// with — the canonical "lives at / present in / tied to" link surface.
+/// Both sides of the relationship are stored (a [Location] also tracks
+/// its [characterIds]); the data service is responsible for keeping
+/// the two lists in sync.
 @immutable
 class Character {
   const Character({
@@ -10,6 +16,7 @@ class Character {
     required this.role,
     required this.description,
     required this.createdAt,
+    this.locationIds = const [],
   });
 
   final String id;
@@ -18,8 +25,14 @@ class Character {
   final String role;
   final String description;
   final DateTime createdAt;
+  final List<String> locationIds;
 
-  Character copyWith({String? name, String? role, String? description}) {
+  Character copyWith({
+    String? name,
+    String? role,
+    String? description,
+    List<String>? locationIds,
+  }) {
     return Character(
       id: id,
       worldId: worldId,
@@ -27,6 +40,7 @@ class Character {
       role: role ?? this.role,
       description: description ?? this.description,
       createdAt: createdAt,
+      locationIds: locationIds ?? this.locationIds,
     );
   }
 
@@ -37,6 +51,7 @@ class Character {
     'role': role,
     'description': description,
     'createdAt': createdAt.toIso8601String(),
+    'locationIds': locationIds,
   };
 
   factory Character.fromJson(Map<String, dynamic> json) => Character(
@@ -46,6 +61,8 @@ class Character {
     role: json['role'] as String? ?? '',
     description: json['description'] as String? ?? '',
     createdAt: DateTime.parse(json['createdAt'] as String),
+    locationIds:
+        (json['locationIds'] as List?)?.cast<String>() ?? const <String>[],
   );
 
   @override
@@ -56,9 +73,17 @@ class Character {
       other.name == name &&
       other.role == role &&
       other.description == description &&
-      other.createdAt == createdAt;
+      other.createdAt == createdAt &&
+      listEquals(other.locationIds, locationIds);
 
   @override
-  int get hashCode =>
-      Object.hash(id, worldId, name, role, description, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    worldId,
+    name,
+    role,
+    description,
+    createdAt,
+    Object.hashAll(locationIds),
+  );
 }

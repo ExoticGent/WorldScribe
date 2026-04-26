@@ -318,23 +318,59 @@ class FirestoreDataService extends WorldscribeDataService {
     if (index == -1) return;
 
     final removed = characters[index];
+    final affectedLocations = <int, Location>{};
+    final locations = _locationsByWorld[worldId];
+    if (locations != null) {
+      for (var i = 0; i < locations.length; i++) {
+        if (locations[i].characterIds.contains(characterId)) {
+          affectedLocations[i] = locations[i];
+        }
+      }
+    }
+
     final nextCharacters = List<Character>.from(characters)..removeAt(index);
     _charactersByWorld[worldId] = nextCharacters;
+    if (locations != null && affectedLocations.isNotEmpty) {
+      final nextLocations = List<Location>.from(locations);
+      for (final entry in affectedLocations.entries) {
+        nextLocations[entry.key] = entry.value.copyWith(
+          characterIds: List<String>.from(entry.value.characterIds)
+            ..remove(characterId),
+        );
+      }
+      _locationsByWorld[worldId] = nextLocations;
+    }
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _worldsRef
-          .doc(worldId)
-          .collection('characters')
-          .doc(characterId)
-          .delete();
+      final batch = _firestore.batch();
+      batch.delete(
+        _worldsRef.doc(worldId).collection('characters').doc(characterId),
+      );
+      // Drop the dangling characterId from each linked location.
+      for (final entry in affectedLocations.entries) {
+        batch.set(
+          _worldsRef
+              .doc(worldId)
+              .collection('locations')
+              .doc(entry.value.id),
+          {
+            'characterIds': FieldValue.arrayRemove([characterId]),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      await batch.commit();
     } catch (_) {
       final rollback = List<Character>.from(
         _charactersByWorld[worldId] ?? const <Character>[],
       );
       rollback.insert(index, removed);
       _charactersByWorld[worldId] = rollback;
+      if (locations != null && affectedLocations.isNotEmpty) {
+        _locationsByWorld[worldId] = locations;
+      }
       _errorMessage = 'Could not delete the character from Firebase.';
       notifyListeners();
       rethrow;
@@ -421,24 +457,175 @@ class FirestoreDataService extends WorldscribeDataService {
     if (index == -1) return;
 
     final removed = locations[index];
+    final affectedCharacters = <int, Character>{};
+    final characters = _charactersByWorld[worldId];
+    if (characters != null) {
+      for (var i = 0; i < characters.length; i++) {
+        if (characters[i].locationIds.contains(locationId)) {
+          affectedCharacters[i] = characters[i];
+        }
+      }
+    }
+
     final nextLocations = List<Location>.from(locations)..removeAt(index);
     _locationsByWorld[worldId] = nextLocations;
+    if (characters != null && affectedCharacters.isNotEmpty) {
+      final nextCharacters = List<Character>.from(characters);
+      for (final entry in affectedCharacters.entries) {
+        nextCharacters[entry.key] = entry.value.copyWith(
+          locationIds: List<String>.from(entry.value.locationIds)
+            ..remove(locationId),
+        );
+      }
+      _charactersByWorld[worldId] = nextCharacters;
+    }
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _worldsRef
-          .doc(worldId)
-          .collection('locations')
-          .doc(locationId)
-          .delete();
+      final batch = _firestore.batch();
+      batch.delete(
+        _worldsRef.doc(worldId).collection('locations').doc(locationId),
+      );
+      for (final entry in affectedCharacters.entries) {
+        batch.set(
+          _worldsRef
+              .doc(worldId)
+              .collection('characters')
+              .doc(entry.value.id),
+          {
+            'locationIds': FieldValue.arrayRemove([locationId]),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      await batch.commit();
     } catch (_) {
       final rollback = List<Location>.from(
         _locationsByWorld[worldId] ?? const <Location>[],
       );
       rollback.insert(index, removed);
       _locationsByWorld[worldId] = rollback;
+      if (characters != null && affectedCharacters.isNotEmpty) {
+        _charactersByWorld[worldId] = characters;
+      }
       _errorMessage = 'Could not delete the location from Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // -- Relationships --------------------------------------------------------
+
+  @override
+  Future<void> linkCharacterAndLocation({
+    required String worldId,
+    required String characterId,
+    required String locationId,
+  }) {
+    return _writeLink(
+      worldId: worldId,
+      characterId: characterId,
+      locationId: locationId,
+      add: true,
+    );
+  }
+
+  @override
+  Future<void> unlinkCharacterAndLocation({
+    required String worldId,
+    required String characterId,
+    required String locationId,
+  }) {
+    return _writeLink(
+      worldId: worldId,
+      characterId: characterId,
+      locationId: locationId,
+      add: false,
+    );
+  }
+
+  /// Single code path for [linkCharacterAndLocation] and
+  /// [unlinkCharacterAndLocation] — flips both ends of the relationship,
+  /// optimistically updates the local cache, batches the Firestore
+  /// writes, and rolls back on failure. [add] true links, false unlinks.
+  Future<void> _writeLink({
+    required String worldId,
+    required String characterId,
+    required String locationId,
+    required bool add,
+  }) async {
+    final characters = _charactersByWorld[worldId];
+    final locations = _locationsByWorld[worldId];
+    if (characters == null || locations == null) return;
+
+    final ci = characters.indexWhere((c) => c.id == characterId);
+    final li = locations.indexWhere((l) => l.id == locationId);
+    if (ci == -1 || li == -1) return;
+
+    final character = characters[ci];
+    final location = locations[li];
+    final hasLink =
+        character.locationIds.contains(locationId) &&
+        location.characterIds.contains(characterId);
+    if (add && hasLink) return;
+    if (!add &&
+        !character.locationIds.contains(locationId) &&
+        !location.characterIds.contains(characterId)) {
+      return;
+    }
+
+    final nextCharacterLocationIds = add
+        ? (character.locationIds.contains(locationId)
+              ? character.locationIds
+              : [...character.locationIds, locationId])
+        : (List<String>.from(character.locationIds)..remove(locationId));
+    final nextLocationCharacterIds = add
+        ? (location.characterIds.contains(characterId)
+              ? location.characterIds
+              : [...location.characterIds, characterId])
+        : (List<String>.from(location.characterIds)..remove(characterId));
+
+    final nextCharacters = List<Character>.from(characters);
+    nextCharacters[ci] = character.copyWith(
+      locationIds: nextCharacterLocationIds,
+    );
+    final nextLocations = List<Location>.from(locations);
+    nextLocations[li] = location.copyWith(
+      characterIds: nextLocationCharacterIds,
+    );
+    _charactersByWorld[worldId] = nextCharacters;
+    _locationsByWorld[worldId] = nextLocations;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final batch = _firestore.batch();
+      final characterRef = _worldsRef
+          .doc(worldId)
+          .collection('characters')
+          .doc(characterId);
+      final locationRef = _worldsRef
+          .doc(worldId)
+          .collection('locations')
+          .doc(locationId);
+      batch.set(characterRef, {
+        'locationIds': add
+            ? FieldValue.arrayUnion([locationId])
+            : FieldValue.arrayRemove([locationId]),
+      }, SetOptions(merge: true));
+      batch.set(locationRef, {
+        'characterIds': add
+            ? FieldValue.arrayUnion([characterId])
+            : FieldValue.arrayRemove([characterId]),
+      }, SetOptions(merge: true));
+      await batch.commit();
+    } catch (_) {
+      _charactersByWorld[worldId] = characters;
+      _locationsByWorld[worldId] = locations;
+      _errorMessage = add
+          ? 'Could not link the character and location.'
+          : 'Could not unlink the character and location.';
       notifyListeners();
       rethrow;
     }
@@ -558,6 +745,8 @@ class FirestoreDataService extends WorldscribeDataService {
       role: data['role'] as String? ?? '',
       description: data['description'] as String? ?? '',
       createdAt: _readDate(data['createdAt']),
+      locationIds:
+          (data['locationIds'] as List?)?.cast<String>() ?? const <String>[],
     );
   }
 
@@ -573,6 +762,8 @@ class FirestoreDataService extends WorldscribeDataService {
       type: data['type'] as String? ?? '',
       description: data['description'] as String? ?? '',
       createdAt: _readDate(data['createdAt']),
+      characterIds:
+          (data['characterIds'] as List?)?.cast<String>() ?? const <String>[],
     );
   }
 
@@ -588,6 +779,7 @@ class FirestoreDataService extends WorldscribeDataService {
     'role': character.role,
     'description': character.description,
     'createdAt': Timestamp.fromDate(character.createdAt),
+    'locationIds': character.locationIds,
   };
 
   Map<String, dynamic> _locationToFirestore(Location location) => {
@@ -595,6 +787,7 @@ class FirestoreDataService extends WorldscribeDataService {
     'type': location.type,
     'description': location.description,
     'createdAt': Timestamp.fromDate(location.createdAt),
+    'characterIds': location.characterIds,
   };
 
   DateTime _readDate(Object? value) {

@@ -93,6 +93,20 @@ Backend + data layer:
   screens don't reach into concrete classes.
 - AI Forge wired through a separate `AiForgeService` so the UI degrades
   cleanly when Functions are unavailable.
+- **Relationship layer (M7a)** — bidirectional, typed references stored
+  on both ends. `Character` carries `List<String> locationIds`; `Location`
+  carries `List<String> characterIds`. The data-service abstraction owns
+  the link primitive (`linkCharacterAndLocation` /
+  `unlinkCharacterAndLocation`) so screens never have to write both sides
+  themselves. Both implementations:
+  - Are idempotent (linking the same pair twice is a no-op; unlinking a
+    non-existent link is a no-op)
+  - Cascade on delete — deleting a character strips its id from every
+    location's `characterIds`, and vice versa for locations
+  - Atomic on Firestore — link/unlink and cascade-delete go through a
+    single Firestore batch using `FieldValue.arrayUnion` /
+    `FieldValue.arrayRemove`, with optimistic local cache updates and
+    rollback on failure
 
 Firebase integration:
 
@@ -106,7 +120,7 @@ Firebase integration:
 - Cloud Functions scaffold (`functions/src/index.ts`) for the
   `generateCharacter` callable
 
-Tests + quality gates (54 passing as of this handoff):
+Tests + quality gates (64 passing as of this handoff):
 
 - `flutter analyze` clean
 - `flutter test` — all green
@@ -123,8 +137,12 @@ Test files:
   backed by `fake_cloud_firestore`. Catches breakage at the UI ↔
   data-service boundary.
 - `test/services/data_service_test.dart` — in-memory service behavior
+  including a `relationships` group (link / unlink idempotency,
+  cascade-delete on both sides)
 - `test/services/firestore_data_service_test.dart` — Firestore service
-  snapshot sync and CRUD (uses `fake_cloud_firestore`)
+  snapshot sync and CRUD (uses `fake_cloud_firestore`); also covers the
+  `relationships` group end-to-end against the fake Firestore (atomic
+  batch writes, cascade-delete writes through to the inverse-side doc)
 - `test/widgets/confirm_dialog_test.dart` — destructive vs non-
   destructive styling, confirm/cancel/scrim-dismiss return values
 - `test/core/forms/form_validators_test.dart` — required, maxLength,
@@ -149,6 +167,8 @@ Manual device smoke test:
 - Live Gemini secret + Function deployment (intentionally postponed —
   needs Blaze billing on `worldscribe-9c753`; see "AI Forge live
   deployment" below)
+- Relationship UI (M7b) — the link/unlink primitive ships in M7a, but
+  the character/location detail screens don't surface a picker yet
 - Faction system, lore editor, broader AI Forge (locations, lore,
   factions all still TODO)
 - Permanent (non-anonymous) sign-in flow
@@ -305,13 +325,23 @@ users/
             role
             description
             createdAt
+            locationIds: [locationId, ...]   # M7a — typed ref to locations
         locations/
           {locationId}/
             name
             type
             description
             createdAt
+            characterIds: [characterId, ...] # M7a — typed ref to characters
 ```
+
+The two arrays are denormalized — the same edge appears on both sides.
+The data service is the only thing that writes them, and always writes
+both sides in a single Firestore batch using `FieldValue.arrayUnion`
+and `FieldValue.arrayRemove`. Treat them as set-like (no duplicates).
+When you add the next entity type with relationships (e.g. factions),
+follow the same shape: typed `<entity>Ids` arrays on both ends, mutated
+through a service-level link primitive.
 
 ---
 
@@ -382,19 +412,29 @@ When ready:
 
 Foreground (good next milestones — each fits the small-milestone rule):
 
-1. **Faction system** (model + screen + dual-mode add/edit sheet,
+1. **Relationship UI (M7b)** — surface the M7a link primitive. Build a
+   generic `EntityPickerSheet` that shows a filterable list of one
+   entity type for the current world; from `character_detail_screen.dart`
+   you pick locations to link/unlink, and from `location_detail_screen.dart`
+   you pick characters. Each detail screen grows a "Linked locations" /
+   "Linked characters" section with tap-to-unlink. Reuse the existing
+   form-pattern conventions; this should not introduce a new pattern.
+2. **Faction system** (model + screen + dual-mode add/edit sheet,
    following the existing form pattern). Mirror the Location flow:
    list screen → detail screen → add/edit sheet → delete via
-   `ConfirmDialog`.
-2. **Lore notes** (free-form long-text entries scoped to a world).
-   Same shape as factions but more description-heavy.
-3. **AI Forge expansion** — extend the `generateCharacter` callable
+   `ConfirmDialog`. Lean on M7a's link primitive: characters belong to
+   factions, locations are controlled by factions — same `factionIds` /
+   `characterIds` / `locationIds` denormalization.
+3. **Lore notes** (free-form long-text entries scoped to a world).
+   Same shape as factions but more description-heavy. Mentions of any
+   other entity flow through the M7b picker.
+4. **AI Forge expansion** — extend the `generateCharacter` callable
    shape to also support locations and lore, with the UI choosing
    which entity to forge.
-4. **Native device smoke test** — run create/edit/delete world,
+5. **Native device smoke test** — run create/edit/delete world,
    character, and location flows against live Firestore on Android +
    iOS, confirm no fallback to the mock store.
-5. **Sign-in flow** — replace anonymous-only with email/Google sign-in,
+6. **Sign-in flow** — replace anonymous-only with email/Google sign-in,
    then revisit whether to disable Anonymous Auth.
 
 Background (quality / housekeeping):
@@ -439,8 +479,11 @@ When the project flips to Blaze:
 
 ## Notes
 
-- Current date for this handoff: 2026-04-26.
+- Current date for this handoff: 2026-04-25.
 - Last shipped milestones (most recent first):
+  - Relationship data layer — bidirectional typed refs on Character /
+    Location, atomic both-sides link/unlink primitive on the data service,
+    cascade-delete on both ends, 10 new tests (M7a)
   - Build verification + UI ↔ Firestore integration test + device
     smoke checklist (M6)
   - PopScope discard-changes guard across all forms (`620748c`)
@@ -448,4 +491,4 @@ When the project flips to Blaze:
   - Input length caps + centralized form validators (`252d548`)
   - Character edit flow + unified detail scaffolding (`93ab7b9`)
   - Location detail screen with edit + delete (`a792a51`)
-- 54 tests passing at handoff.
+- 64 tests passing at handoff.

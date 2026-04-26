@@ -144,6 +144,20 @@ class InMemoryDataService extends WorldscribeDataService {
     final list = _charactersByWorld[worldId];
     if (list == null) return;
     list.removeWhere((c) => c.id == characterId);
+    // Cascade: remove the dangling characterId from every location that
+    // referenced this character, so links stay consistent.
+    final locations = _locationsByWorld[worldId];
+    if (locations != null) {
+      for (var i = 0; i < locations.length; i++) {
+        final location = locations[i];
+        if (location.characterIds.contains(characterId)) {
+          locations[i] = location.copyWith(
+            characterIds: List<String>.from(location.characterIds)
+              ..remove(characterId),
+          );
+        }
+      }
+    }
     notifyListeners();
   }
 
@@ -200,6 +214,85 @@ class InMemoryDataService extends WorldscribeDataService {
     final list = _locationsByWorld[worldId];
     if (list == null) return;
     list.removeWhere((l) => l.id == locationId);
+    // Cascade: remove the dangling locationId from every character that
+    // referenced this location.
+    final characters = _charactersByWorld[worldId];
+    if (characters != null) {
+      for (var i = 0; i < characters.length; i++) {
+        final character = characters[i];
+        if (character.locationIds.contains(locationId)) {
+          characters[i] = character.copyWith(
+            locationIds: List<String>.from(character.locationIds)
+              ..remove(locationId),
+          );
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  // -- Relationships --------------------------------------------------------
+
+  @override
+  Future<void> linkCharacterAndLocation({
+    required String worldId,
+    required String characterId,
+    required String locationId,
+  }) async {
+    final character = characterById(worldId, characterId);
+    final location = locationById(worldId, locationId);
+    if (character == null || location == null) return;
+
+    final alreadyLinked =
+        character.locationIds.contains(locationId) &&
+        location.characterIds.contains(characterId);
+    if (alreadyLinked) return;
+
+    final characters = _charactersByWorld[worldId]!;
+    final locations = _locationsByWorld[worldId]!;
+    final ci = characters.indexWhere((c) => c.id == characterId);
+    final li = locations.indexWhere((l) => l.id == locationId);
+
+    characters[ci] = character.copyWith(
+      locationIds: character.locationIds.contains(locationId)
+          ? character.locationIds
+          : [...character.locationIds, locationId],
+    );
+    locations[li] = location.copyWith(
+      characterIds: location.characterIds.contains(characterId)
+          ? location.characterIds
+          : [...location.characterIds, characterId],
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> unlinkCharacterAndLocation({
+    required String worldId,
+    required String characterId,
+    required String locationId,
+  }) async {
+    final character = characterById(worldId, characterId);
+    final location = locationById(worldId, locationId);
+    if (character == null || location == null) return;
+
+    final hadLink =
+        character.locationIds.contains(locationId) ||
+        location.characterIds.contains(characterId);
+    if (!hadLink) return;
+
+    final characters = _charactersByWorld[worldId]!;
+    final locations = _locationsByWorld[worldId]!;
+    final ci = characters.indexWhere((c) => c.id == characterId);
+    final li = locations.indexWhere((l) => l.id == locationId);
+
+    characters[ci] = character.copyWith(
+      locationIds: List<String>.from(character.locationIds)..remove(locationId),
+    );
+    locations[li] = location.copyWith(
+      characterIds: List<String>.from(location.characterIds)
+        ..remove(characterId),
+    );
     notifyListeners();
   }
 
