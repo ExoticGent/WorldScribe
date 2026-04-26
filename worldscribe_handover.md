@@ -106,7 +106,7 @@ Firebase integration:
 - Cloud Functions scaffold (`functions/src/index.ts`) for the
   `generateCharacter` callable
 
-Tests + quality gates (52 passing as of this handoff):
+Tests + quality gates (54 passing as of this handoff):
 
 - `flutter analyze` clean
 - `flutter test` — all green
@@ -118,6 +118,10 @@ Test files:
   seeded worlds, world CRUD, AI Forge with fake service, add character,
   delete character, add location, edit character/location, discard-
   changes prompts on world / character / location forms)
+- `test/integration/firestore_app_test.dart` — end-to-end smoke test
+  driving the real `WorldScribeApp` widget through a `FirestoreDataService`
+  backed by `fake_cloud_firestore`. Catches breakage at the UI ↔
+  data-service boundary.
 - `test/services/data_service_test.dart` — in-memory service behavior
 - `test/services/firestore_data_service_test.dart` — Firestore service
   snapshot sync and CRUD (uses `fake_cloud_firestore`)
@@ -128,6 +132,15 @@ Test files:
 - `test/visual_preview_test.dart` + `test/goldens/` — golden-style
   snapshots for splash, home, world dashboard, character detail
 - `test/fake_ai_forge_service.dart` — shared fake for AI Forge
+
+Manual device smoke test:
+
+- `device_smoke_test.md` at repo root — 10-minute checklist for
+  validating the live Firestore path on a real Android or iOS device.
+  Run after FlutterFire upgrades, bootstrap changes, or rules / index
+  changes. Specifically catches the things `fake_cloud_firestore` can't:
+  native build config drift, real auth / rules failures, FlutterFire
+  init issues.
 
 ---
 
@@ -143,7 +156,7 @@ Test files:
   side batched subcollection delete)
 - Android / iOS device smoke test against live Firestore (web smoke
   test passed; native still recommended before declaring backend cutover
-  battle-tested)
+  battle-tested — see `device_smoke_test.md` for the checklist)
 
 ---
 
@@ -213,6 +226,7 @@ web/
 
 test/
   core/forms/form_validators_test.dart
+  integration/firestore_app_test.dart      # end-to-end UI ↔ Firestore smoke
   services/data_service_test.dart
   services/firestore_data_service_test.dart
   widgets/confirm_dialog_test.dart
@@ -221,6 +235,7 @@ test/
   visual_preview_test.dart
   widget_test.dart
 
+device_smoke_test.md          # manual device-smoke checklist
 firebase.json
 firestore.rules
 firestore.indexes.json
@@ -424,11 +439,13 @@ When the project flips to Blaze:
 
 ## Notes
 
-- Current date for this handoff: 2026-04-25.
+- Current date for this handoff: 2026-04-26.
 - Last shipped milestones (most recent first):
+  - Build verification + UI ↔ Firestore integration test + device
+    smoke checklist (M6)
   - PopScope discard-changes guard across all forms (`620748c`)
   - Centralized destructive confirmations via `ConfirmDialog` (`d06d743`)
   - Input length caps + centralized form validators (`252d548`)
   - Character edit flow + unified detail scaffolding (`93ab7b9`)
   - Location detail screen with edit + delete (`a792a51`)
-- 52 tests passing at handoff.
+- 54 tests passing at handoff.
