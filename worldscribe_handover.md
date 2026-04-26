@@ -138,6 +138,9 @@ Firebase integration:
 - `firebase_core`, `firebase_auth`, `cloud_firestore`, `cloud_functions`
 - Generated `lib/firebase_options.dart`
 - Android `google-services.json` and iOS `GoogleService-Info.plist`
+- `.firebaserc` sets the default Firebase CLI project to
+  `worldscribe-9c753` so secrets/deploy commands do not need a
+  `--project` flag every time
 - `firebase.json`, `firestore.rules`, `firestore.indexes.json` (rules +
   indexes deployed; rules cover subcollections)
 - Anonymous Auth enabled
@@ -148,8 +151,26 @@ Firebase integration:
 Tests + quality gates (75 passing as of this handoff):
 
 - `flutter analyze` clean
-- `flutter test` — all green
+- `flutter test` - all green
 - `flutter build apk --debug` and `flutter build web` both succeed
+
+Latest full scan (2026-04-26):
+
+- `flutter analyze` passed
+- `flutter test` passed (75 tests)
+- `flutter build web` passed
+- `flutter build apk --debug` passed
+- `npm --prefix functions run build` passed
+- Secret scan found no committed Gemini/server key. The `AIza...`
+  values are Firebase client config keys in generated platform config.
+- `npm --prefix functions audit --omit=dev` reports low/moderate
+  transitive advisories under the Firebase Admin dependency tree. The
+  suggested `--force` fix would install an older/breaking
+  `firebase-admin`, so do not apply it blindly; revisit when upstream
+  Firebase packages move.
+- Android debug build emits an SDK XML version warning from local
+  Android tooling. Build succeeds; update Android command-line tools if
+  it becomes noisy or blocks CI.
 
 Test files:
 
@@ -461,7 +482,13 @@ When ready:
 
 ## Recommended next steps
 
-Foreground (good next milestones — each fits the small-milestone rule):
+The roadmap below was rewritten on 2026-04-26 after a product review.
+The driving idea: stop adding entity *types* and start making the
+existing entities *richer and more discoverable*. Search, rich-text
+lore with inline `@mentions`, images, tags, and timelines are what
+turn a structured-CRUD app into an actual worldbuilder's tool.
+
+Foreground (each fits the small-milestone rule):
 
 1. **M8b — Faction relationships.** Add `factionIds` to `Character`
    and `Location`, add `characterIds` + `locationIds` to `Faction`,
@@ -476,18 +503,71 @@ Foreground (good next milestones — each fits the small-milestone rule):
    detail screen drops in two `LinkedEntitiesSection`s (characters,
    locations) reusing the M7b picker. No new picker or section widget
    should be needed.
-3. **M9 — Lore notes** (free-form long-text entries scoped to a
-   world). Same shape as factions but more description-heavy. Mentions
-   of any other entity flow through the M7b picker.
-4. **M10 — Real sign-in flow** — email + Google sign-in, with
+3. **M8.5 — Global search.** Tiny milestone, huge UX win. A search
+   field on `HomeScreen` and `WorldDashboardScreen` that filters the
+   current world's characters / locations / factions (and any future
+   entity) by name and other text fields against the in-memory cache.
+   No backend work — `dataService` already has everything cached.
+   Tap a result to push the matching detail screen.
+4. **M9a — Rich-text lore notes with `@mentions`.** Free-form long-text
+   entries scoped to a world. Description must be markdown-aware
+   (headings, lists, italics, links) and support inline `@mentions` of
+   any other entity, rendered as clickable chips that navigate to the
+   linked detail screen. Pick a Flutter markdown editor (e.g.
+   `flutter_quill` or a markdown text controller) and treat the
+   `@`-trigger autocomplete as a first-class feature, not an
+   afterthought. **Do not ship plain-text lore — the writing-tool feel
+   depends on this.**
+5. **M9b — Images per entity.** Single image upload for character,
+   location, and faction (and lore once it lands). Stored in Firebase
+   Storage under `users/{uid}/worlds/{worldId}/images/{entityId}`.
+   Detail headers carry the image; cards show a thumbnail. Anonymous
+   users hit Storage rules that mirror the Firestore ones. Faceless
+   characters are forgettable characters — this transforms the feel.
+6. **M9c — Tags.** Free-form, comma-or-chip-input tags on every entity.
+   Orthogonal to the typed-relationship system: `#ally-of-veyra`,
+   `#chapter-3`, `#dark-fantasy`. Filter the world dashboard by tag.
+   Tag autocomplete from existing tags in the same world.
+7. **M10 — Timelines.** Per-world timeline of events, each event
+   carrying a date (or relative anchor), a title, a description, and
+   any number of typed `<entity>Ids` linking it to characters /
+   locations / factions / lore. Horizontal scroll, grouped by era.
+   This is the feature serious worldbuilders consume daily — it is
+   where the structured-data approach finally pays off over a wiki.
+8. **M11 — Real sign-in flow.** Email + Google sign-in, with
    anonymous as guest fallback. Then revisit whether to disable
-   Anonymous Auth.
-5. **AI Forge expansion** — extend the `generateCharacter` callable
+   Anonymous Auth and add account-recovery / data-portability
+   safeguards.
+9. **AI Forge expansion** — extend the `generateCharacter` callable
    shape to also support locations, factions, and lore, with the UI
-   choosing which entity to forge.
-6. **Native device smoke test** — run create/edit/delete world,
-   character, location, and faction flows against live Firestore on
-   Android + iOS, confirm no fallback to the mock store.
+   choosing which entity to forge. Ideally generate *with*
+   relationships ("create a character who is an enemy of Veyra and
+   lives in Karr"), since the relationship layer will be in place.
+10. **Native device smoke test** — run create/edit/delete world,
+    character, location, and faction flows against live Firestore on
+    Android + iOS, confirm no fallback to the mock store.
+
+Deferred / explicitly skipped for now:
+
+- **Maps.** Big feature, big lift. Worth doing eventually as image-
+  upload-with-pinned-locations, but not before search / lore /
+  timelines. Don't compete with Inkarnate on vector mapping.
+- **Family trees / org charts.** Beloved by users, brutal to build
+  well — graph layout is genuinely hard. Defer until there's a clear
+  use case backed by user feedback.
+- **Custom fields / templates.** Power-user feature; don't add until
+  power users exist. The fixed schema (role, ideology, type) is fine
+  for MVP and intentional.
+- **Collaboration / shared worlds / public read links.** Real
+  permissions story. Worth doing only after single-user is excellent
+  and after M11 ships real auth.
+
+Future schema note: relationships today are **untyped** ("Veyra is
+linked to Karr", full stop). In real worldbuilding the *kind* of edge
+matters: `BORN_IN`, `IMPRISONED_IN`, `RULES`, `ALLIED_WITH`, etc.
+M8b should not entrench the unlabeled model — leave room to add a
+`label` field per edge later. Don't refactor pre-emptively, but if
+M9 / M10 surfaces real demand, the next pass adds labelled edges.
 
 Background (quality / housekeeping):
 
@@ -496,12 +576,13 @@ Background (quality / housekeeping):
   cases for locations would round out parity with characters).
 - Consider an integration test that boots through `AppBootstrap` with
   `fake_cloud_firestore` to exercise the real wiring end-to-end.
-- Revisit Anonymous Auth once a real sign-in flow exists.
+- Revisit Anonymous Auth once M11 ships.
 
 When the project flips to Blaze:
 
 - Set `GEMINI_API_KEY` secret, deploy `generateCharacter`, smoke-test
-  AI Forge live, then start expanding AI Forge beyond characters.
+  AI Forge live, then start expanding AI Forge beyond characters per
+  step 9 above.
 
 ---
 
