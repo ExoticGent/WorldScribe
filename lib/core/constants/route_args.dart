@@ -20,3 +20,10 @@ class LocationRouteArgs {
   final String worldId;
   final String locationId;
 }
+
+class FactionRouteArgs {
+  const FactionRouteArgs({required this.worldId, required this.factionId});
+
+  final String worldId;
+  final String factionId;
+}

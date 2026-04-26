@@ -93,6 +93,27 @@ class AppStrings {
   static const String deleteLocationPrompt =
       'This location will be removed from the world. This cannot be undone.';
 
+  // Factions
+  static const String factionsTitle = 'Factions';
+  static const String factionsEmpty = 'No factions yet.';
+  static const String factionsEmptyHint =
+      'Add a house, guild, cult, crew, or rival power to this world.';
+  static const String newFaction = 'New Faction';
+  static const String factionNameLabel = 'Name';
+  static const String factionIdeologyLabel = 'Ideology';
+  static const String factionIdeologyHint =
+      'Creed, agenda, charter, or cause...';
+  static const String factionDescriptionLabel = 'Description';
+  static const String factionDescriptionHint =
+      'Members, influence, secrets, rivals.';
+  static const String saveFaction = 'Save Faction';
+  static const String editFactionTitle = 'Edit Faction';
+  static const String saveFactionChanges = 'Save Changes';
+  static const String editFactionAction = 'Edit faction';
+  static const String deleteFactionAction = 'Delete faction';
+  static const String deleteFactionPrompt =
+      'This faction will be removed from the world. This cannot be undone.';
+
   // Data / bootstrap
   static const String backendFallbackNotice =
       'Running in mock-data mode until Firebase is configured.';
@@ -100,8 +121,10 @@ class AppStrings {
   static const String loadingWorld = 'Opening world...';
   static const String loadingCharacters = 'Gathering your cast...';
   static const String loadingLocations = 'Charting your map...';
+  static const String loadingFactions = 'Summoning your powers...';
   static const String loadingCharacter = 'Opening character...';
   static const String loadingLocation = 'Opening location...';
+  static const String loadingFaction = 'Opening faction...';
   static const String loadDataFailed = 'Unable to load your data right now.';
   static const String createWorldFailed =
       'Could not create the world. Try again.';
@@ -117,6 +140,12 @@ class AppStrings {
       'Could not save the location. Try again.';
   static const String updateLocationFailed =
       'Could not update the location. Try again.';
+  static const String saveFactionFailed =
+      'Could not save the faction. Try again.';
+  static const String updateFactionFailed =
+      'Could not update the faction. Try again.';
+  static const String deleteFactionFailed =
+      'Could not delete the faction. Try again.';
   static const String deleteLocationFailed =
       'Could not delete the location. Try again.';
   static const String deleteCharacterFailed =
@@ -137,10 +166,8 @@ class AppStrings {
       'Add a location to this world to link it.';
   static const String noCharactersYet =
       'Add a character to this world to link it.';
-  static const String linkFailed =
-      'Could not save the link. Try again.';
-  static const String unlinkFailed =
-      'Could not remove the link. Try again.';
+  static const String linkFailed = 'Could not save the link. Try again.';
+  static const String unlinkFailed = 'Could not remove the link. Try again.';
   static const String unlinkLocationTooltip = 'Unlink location';
   static const String unlinkCharacterTooltip = 'Unlink character';
 

@@ -399,6 +399,246 @@ void main() {
     );
   });
 
+  testWidgets('Factions dashboard tile opens the faction list', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final faction = InMemoryDataService.instance.factionsFor(world.id).first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.worldDashboard,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Factions'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.widgetWithText(FloatingActionButton, 'New Faction'),
+      findsOneWidget,
+    );
+    expect(find.text(faction.name), findsOneWidget);
+  });
+
+  testWidgets('Add faction flow pushes a new row onto Factions', (
+    tester,
+  ) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.factions,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FloatingActionButton, 'New Faction'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'The Glass Court',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Ideology'),
+      'Order through ritual.',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Faction'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('The Glass Court'), findsOneWidget);
+    expect(
+      InMemoryDataService.instance
+          .factionsFor(world.id)
+          .any((faction) => faction.name == 'The Glass Court'),
+      isTrue,
+    );
+  });
+
+  testWidgets('Faction detail shows the selected faction', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final faction = InMemoryDataService.instance.factionsFor(world.id).first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.factionDetail,
+        arguments: FactionRouteArgs(worldId: world.id, factionId: faction.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(faction.name), findsWidgets);
+    expect(find.text(faction.ideology), findsOneWidget);
+    expect(find.text(faction.description), findsOneWidget);
+    expect(find.text('LINKED CHARACTERS'), findsOneWidget);
+    expect(find.text('LINKED LOCATIONS'), findsOneWidget);
+  });
+
+  testWidgets('Edit faction from detail updates the card', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final faction = InMemoryDataService.instance.factionsFor(world.id).first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.factionDetail,
+        arguments: FactionRouteArgs(worldId: world.id, factionId: faction.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit faction'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      '${faction.name} Reforged',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save Changes'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('${faction.name} Reforged'), findsWidgets);
+    expect(
+      InMemoryDataService.instance.factionById(world.id, faction.id)?.name,
+      '${faction.name} Reforged',
+    );
+  });
+
+  testWidgets('Delete from Faction Detail removes the faction', (tester) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final faction = InMemoryDataService.instance.factionsFor(world.id).first;
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.factionDetail,
+        arguments: FactionRouteArgs(worldId: world.id, factionId: faction.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(faction.name), findsWidgets);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete faction'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(
+      InMemoryDataService.instance.factionById(world.id, faction.id),
+      isNull,
+    );
+  });
+
+  testWidgets(
+    'Link a character from Faction Detail surfaces it and persists the link',
+    (tester) async {
+      final world = InMemoryDataService.instance.worlds.first;
+      final faction = InMemoryDataService.instance.factionsFor(world.id).first;
+      final character = InMemoryDataService.instance
+          .charactersFor(world.id)
+          .first;
+
+      await tester.pumpWidget(
+        _appAtRoute(
+          AppRoutes.factionDetail,
+          arguments: FactionRouteArgs(worldId: world.id, factionId: faction.id),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('LINKED CHARACTERS'), findsOneWidget);
+      expect(find.textContaining('No characters linked yet'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Link a character'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(character.name));
+      await tester.pumpAndSettle();
+
+      expect(find.text(character.name), findsWidgets);
+      expect(
+        InMemoryDataService.instance
+            .factionById(world.id, faction.id)
+            ?.characterIds,
+        contains(character.id),
+      );
+      expect(
+        InMemoryDataService.instance
+            .characterById(world.id, character.id)
+            ?.factionIds,
+        contains(faction.id),
+      );
+
+      await tester.tap(find.byIcon(Icons.link_off).first);
+      await tester.pumpAndSettle();
+
+      expect(
+        InMemoryDataService.instance
+            .factionById(world.id, faction.id)
+            ?.characterIds,
+        isEmpty,
+      );
+      expect(
+        InMemoryDataService.instance
+            .characterById(world.id, character.id)
+            ?.factionIds,
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'Link a location from Faction Detail surfaces it and persists the link',
+    (tester) async {
+      final world = InMemoryDataService.instance.worlds.first;
+      final faction = InMemoryDataService.instance.factionsFor(world.id).first;
+      final location = await InMemoryDataService.instance.addLocation(
+        worldId: world.id,
+        name: 'The Salt Terraces',
+        type: 'Coastline',
+        description: '',
+      );
+
+      await tester.pumpWidget(
+        _appAtRoute(
+          AppRoutes.factionDetail,
+          arguments: FactionRouteArgs(worldId: world.id, factionId: faction.id),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('LINKED LOCATIONS'), findsOneWidget);
+      expect(find.textContaining('No locations linked yet'), findsOneWidget);
+
+      await tester.ensureVisible(
+        find.widgetWithText(TextButton, 'Link a location'),
+      );
+      await tester.tap(find.widgetWithText(TextButton, 'Link a location'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(location.name));
+      await tester.pumpAndSettle();
+
+      expect(find.text(location.name), findsWidgets);
+      expect(
+        InMemoryDataService.instance
+            .factionById(world.id, faction.id)
+            ?.locationIds,
+        contains(location.id),
+      );
+      expect(
+        InMemoryDataService.instance
+            .locationById(world.id, location.id)
+            ?.factionIds,
+        contains(faction.id),
+      );
+    },
+  );
+
   testWidgets(
     'Link a location from Character Detail surfaces it and persists the link',
     (tester) async {
@@ -578,23 +818,22 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Back from Create World with no edits pops without prompting',
-    (tester) async {
-      await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
-      await tester.pumpAndSettle();
+  testWidgets('Back from Create World with no edits pops without prompting', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
+    await tester.pumpAndSettle();
 
-      // Nothing typed -> PopScope.canPop is true -> the route just pops.
-      await Navigator.of(
-        tester.element(find.text('Forge a New World')),
-      ).maybePop();
-      await tester.pumpAndSettle();
+    // Nothing typed -> PopScope.canPop is true -> the route just pops.
+    await Navigator.of(
+      tester.element(find.text('Forge a New World')),
+    ).maybePop();
+    await tester.pumpAndSettle();
 
-      expect(find.text('Discard changes?'), findsNothing);
-      expect(find.text('Forge a New World'), findsNothing);
-      expect(find.text('Your Worlds'), findsOneWidget);
-    },
-  );
+    expect(find.text('Discard changes?'), findsNothing);
+    expect(find.text('Forge a New World'), findsNothing);
+    expect(find.text('Your Worlds'), findsOneWidget);
+  });
 
   testWidgets(
     'Back from Create World with edits prompts; Keep editing keeps the form',
@@ -630,36 +869,35 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Discarding from Create World pops back to the previous route',
-    (tester) async {
-      await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
-      await tester.pumpAndSettle();
+  testWidgets('Discarding from Create World pops back to the previous route', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));
+    await tester.pumpAndSettle();
 
-      await tester.enterText(
-        find.widgetWithText(TextFormField, 'World name'),
-        'Throwaway',
-      );
-      await tester.pump();
-      await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'World name'),
+      'Throwaway',
+    );
+    await tester.pump();
+    await tester.pump();
 
-      await Navigator.of(
-        tester.element(find.text('Forge a New World')),
-      ).maybePop();
-      await tester.pumpAndSettle();
+    await Navigator.of(
+      tester.element(find.text('Forge a New World')),
+    ).maybePop();
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.widgetWithText(TextButton, 'Discard'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Discard'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Forge a New World'), findsNothing);
-      expect(find.text('Your Worlds'), findsOneWidget);
-      // No partial world was persisted.
-      expect(
-        InMemoryDataService.instance.worlds.any((w) => w.name == 'Throwaway'),
-        isFalse,
-      );
-    },
-  );
+    expect(find.text('Forge a New World'), findsNothing);
+    expect(find.text('Your Worlds'), findsOneWidget);
+    // No partial world was persisted.
+    expect(
+      InMemoryDataService.instance.worlds.any((w) => w.name == 'Throwaway'),
+      isFalse,
+    );
+  });
 
   testWidgets(
     'Discarding from the Add Character sheet closes the sheet without saving',

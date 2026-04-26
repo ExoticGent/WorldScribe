@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../screens/character_detail_screen.dart';
 import '../screens/characters_screen.dart';
 import '../screens/create_world_screen.dart';
+import '../screens/faction_detail_screen.dart';
+import '../screens/factions_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/location_detail_screen.dart';
 import '../screens/locations_screen.dart';
@@ -43,6 +45,10 @@ class AppRouter {
         final args = _require<WorldRouteArgs>(settings);
         return _page(LocationsScreen(worldId: args.worldId), settings);
 
+      case AppRoutes.factions:
+        final args = _require<WorldRouteArgs>(settings);
+        return _page(FactionsScreen(worldId: args.worldId), settings);
+
       case AppRoutes.characterDetail:
         final args = _require<CharacterRouteArgs>(settings);
         return _page(
@@ -60,6 +66,13 @@ class AppRouter {
             worldId: args.worldId,
             locationId: args.locationId,
           ),
+          settings,
+        );
+
+      case AppRoutes.factionDetail:
+        final args = _require<FactionRouteArgs>(settings);
+        return _page(
+          FactionDetailScreen(worldId: args.worldId, factionId: args.factionId),
           settings,
         );
 

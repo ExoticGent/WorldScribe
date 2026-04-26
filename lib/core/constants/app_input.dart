@@ -8,11 +8,11 @@
 class AppInput {
   AppInput._();
 
-  /// Names of top-level entities: worlds, characters, locations.
+  /// Names of top-level entities: worlds, characters, locations, factions.
   static const int maxNameLength = 80;
 
   /// Short tag-style descriptors that sit below the name on a card:
-  /// world genre, character role, location type.
+  /// world genre, character role, location type, faction ideology.
   static const int maxTaglineLength = 60;
 
   /// Free-form long-form descriptions on every entity. Plenty of

@@ -36,8 +36,8 @@ Today the user can:
 - Browse worlds from the home screen and open a world dashboard
 - Add, edit, and delete characters in a world (via dual-mode sheet)
 - Add, edit, and delete locations in a world (via dual-mode sheet)
-- Create, update, delete, and link factions to characters/locations at
-  the data-service level (UI surface lands in M8c)
+- Add, edit, delete, and view factions in a world (via dual-mode sheet)
+- Link factions to characters and locations from faction detail
 - View character detail and location detail
 - Generate a character via the AI Forge sheet (wired against a Cloud
   Function — currently behind a fake service in tests; see Firebase
@@ -57,6 +57,10 @@ App + UX:
 - World create/edit/delete
 - Character add/edit/delete + character detail screen
 - Location add/edit/delete + location detail screen
+- Faction add/edit/delete + faction detail screen. The dashboard
+  Factions tile is live, the list uses `FactionCard`, and faction detail
+  reuses `LinkedEntitiesSection` / `EntityPickerSheet` to link
+  characters and locations.
 - Character ↔ location linking (M7b) — character detail shows a
   "Linked locations" section, location detail shows "Linked characters".
   Tap a row to navigate to the linked entity, tap the unlink icon to
@@ -152,16 +156,16 @@ Firebase integration:
 - Cloud Functions scaffold (`functions/src/index.ts`) for the
   `generateCharacter` callable
 
-Tests + quality gates (87 passing as of this handoff):
+Tests + quality gates (94 passing as of this handoff):
 
 - `flutter analyze` clean
-- `flutter test` - all green (87 tests)
+- `flutter test` - all green (94 tests)
 - `flutter build apk --debug` and `flutter build web` both succeed
 
 Latest full scan (2026-04-26):
 
 - `flutter analyze` passed
-- `flutter test` passed (87 tests)
+- `flutter test` passed (94 tests)
 - `flutter build web` passed
 - `flutter build apk --debug` passed
 - `npm --prefix functions run build` passed
@@ -180,10 +184,12 @@ Test files:
 
 - `test/widget_test.dart` — main MVP flow coverage (splash → home,
   seeded worlds, world CRUD, AI Forge with fake service, add character,
-  delete character, add location, edit character/location, discard-
-  changes prompts on world / character / location forms, linking and
-  unlinking through the entity picker on both character_detail and
-  location_detail, and picker filtering of already-linked entities)
+  delete character, add location, edit character/location, faction
+  dashboard/list/detail/add/edit/delete, faction character/location
+  linking through the entity picker, discard-changes prompts on world /
+  character / location forms, linking and unlinking through the entity
+  picker on both character_detail and location_detail, and picker
+  filtering of already-linked entities)
 - `test/integration/firestore_app_test.dart` — end-to-end smoke test
   driving the real `WorldScribeApp` widget through a `FirestoreDataService`
   backed by `fake_cloud_firestore`. Catches breakage at the UI ↔
@@ -225,9 +231,6 @@ Manual device smoke test:
 - Live Gemini secret + Function deployment (intentionally postponed —
   needs Blaze billing on `worldscribe-9c753`; see "AI Forge live
   deployment" below)
-- Faction UI (M8c) — list screen, detail screen, dual-mode add/edit
-  sheet, dashboard tile. The data layer is ready; nothing is wired into
-  the UI yet.
 - Lore editor; broader AI Forge (locations, lore, factions all still
   TODO)
 - Permanent (non-anonymous) sign-in flow
@@ -273,15 +276,19 @@ lib/
     character_detail_screen.dart
     locations_screen.dart
     location_detail_screen.dart
+    factions_screen.dart
+    faction_detail_screen.dart
   widgets/
     add_character_sheet.dart            # add + edit (dual mode)
     add_location_sheet.dart             # add + edit (dual mode)
+    add_faction_sheet.dart              # add + edit (dual mode)
     ai_forge_sheet.dart
     character_card.dart
     confirm_dialog.dart                 # ConfirmDialog.show
     dashboard_tile.dart
     empty_state.dart
     entity_picker_sheet.dart            # generic link picker (M7b)
+    faction_card.dart
     linked_entities_section.dart        # detail-screen linked-list (M7b)
     loading_state.dart
     location_card.dart
@@ -345,7 +352,7 @@ back to the in-memory store and shows a notice on the home screen.
 ### Form pattern (current contract for every editable form)
 
 Every form route in the app — `CreateWorldScreen`, `AddCharacterSheet`,
-`AddLocationSheet` — follows the same shape:
+`AddLocationSheet`, `AddFactionSheet` — follows the same shape:
 
 1. `final _formKey = GlobalKey<FormState>();`
 2. `TextEditingController` per field, attached `_onChanged` listeners
@@ -495,18 +502,13 @@ turn a structured-CRUD app into an actual worldbuilder's tool.
 
 Foreground (each fits the small-milestone rule):
 
-1. **M8c — Faction UI.** List screen, detail screen, dual-mode add/edit
-   sheet, and a dashboard tile that follows the existing pattern. The
-   detail screen drops in two `LinkedEntitiesSection`s (characters,
-   locations) reusing the M7b picker. No new picker or section widget
-   should be needed.
-2. **M8.5 — Global search.** Tiny milestone, huge UX win. A search
+1. **M8.5 — Global search.** Tiny milestone, huge UX win. A search
    field on `HomeScreen` and `WorldDashboardScreen` that filters the
    current world's characters / locations / factions (and any future
    entity) by name and other text fields against the in-memory cache.
    No backend work — `dataService` already has everything cached.
    Tap a result to push the matching detail screen.
-3. **M9a — Rich-text lore notes with `@mentions`.** Free-form long-text
+2. **M9a — Rich-text lore notes with `@mentions`.** Free-form long-text
    entries scoped to a world. Description must be markdown-aware
    (headings, lists, italics, links) and support inline `@mentions` of
    any other entity, rendered as clickable chips that navigate to the
@@ -515,32 +517,32 @@ Foreground (each fits the small-milestone rule):
    `@`-trigger autocomplete as a first-class feature, not an
    afterthought. **Do not ship plain-text lore — the writing-tool feel
    depends on this.**
-4. **M9b — Images per entity.** Single image upload for character,
+3. **M9b — Images per entity.** Single image upload for character,
    location, and faction (and lore once it lands). Stored in Firebase
    Storage under `users/{uid}/worlds/{worldId}/images/{entityId}`.
    Detail headers carry the image; cards show a thumbnail. Anonymous
    users hit Storage rules that mirror the Firestore ones. Faceless
    characters are forgettable characters — this transforms the feel.
-5. **M9c — Tags.** Free-form, comma-or-chip-input tags on every entity.
+4. **M9c — Tags.** Free-form, comma-or-chip-input tags on every entity.
    Orthogonal to the typed-relationship system: `#ally-of-veyra`,
    `#chapter-3`, `#dark-fantasy`. Filter the world dashboard by tag.
    Tag autocomplete from existing tags in the same world.
-6. **M10 — Timelines.** Per-world timeline of events, each event
+5. **M10 — Timelines.** Per-world timeline of events, each event
    carrying a date (or relative anchor), a title, a description, and
    any number of typed `<entity>Ids` linking it to characters /
    locations / factions / lore. Horizontal scroll, grouped by era.
    This is the feature serious worldbuilders consume daily — it is
    where the structured-data approach finally pays off over a wiki.
-7. **M11 — Real sign-in flow.** Email + Google sign-in, with
+6. **M11 — Real sign-in flow.** Email + Google sign-in, with
    anonymous as guest fallback. Then revisit whether to disable
    Anonymous Auth and add account-recovery / data-portability
    safeguards.
-8. **AI Forge expansion** — extend the `generateCharacter` callable
+7. **AI Forge expansion** — extend the `generateCharacter` callable
    shape to also support locations, factions, and lore, with the UI
    choosing which entity to forge. Ideally generate *with*
    relationships ("create a character who is an enemy of Veyra and
    lives in Karr"), since the relationship layer will be in place.
-9. **Native device smoke test** — run create/edit/delete world,
+8. **Native device smoke test** — run create/edit/delete world,
    character, location, and faction flows against live Firestore on
    Android + iOS, confirm no fallback to the mock store.
 
@@ -569,8 +571,7 @@ labelled edges.
 
 Background (quality / housekeeping):
 
-- Add widget coverage for the faction list/detail/add/edit/delete/link
-  flows as soon as M8c lands.
+- Add widget coverage for global search as soon as M8.5 lands.
 - Consider an integration test that boots through `AppBootstrap` with
   `fake_cloud_firestore` to exercise the real wiring end-to-end.
 - Revisit Anonymous Auth once M11 ships.
@@ -579,7 +580,7 @@ When the project flips to Blaze:
 
 - Set `GEMINI_API_KEY` secret, deploy `generateCharacter`, smoke-test
   AI Forge live, then start expanding AI Forge beyond characters per
-  step 8 above.
+  step 7 above.
 
 ---
 
@@ -611,6 +612,10 @@ When the project flips to Blaze:
 
 - Current date for this handoff: 2026-04-26.
 - Last shipped milestones (most recent first):
+  - Faction UI — live dashboard tile, `FactionsScreen`,
+    `FactionDetailScreen`, `FactionCard`, `AddFactionSheet`, detail
+    edit/delete, character/location linking from faction detail, refreshed
+    dashboard golden, and 7 new widget tests covering the new flows (M8c).
   - Faction relationships on the data layer — `factionIds` on
     `Character` and `Location`, inverse `characterIds` / `locationIds`
     on `Faction`, atomic link/unlink primitives for character/faction
@@ -636,4 +641,4 @@ When the project flips to Blaze:
   - Input length caps + centralized form validators (`252d548`)
   - Character edit flow + unified detail scaffolding (`93ab7b9`)
   - Location detail screen with edit + delete (`a792a51`)
-- 87 tests passing at handoff.
+- 94 tests passing at handoff.

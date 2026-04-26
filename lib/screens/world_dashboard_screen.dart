@@ -13,8 +13,8 @@ import '../widgets/empty_state.dart';
 import '../widgets/loading_state.dart';
 
 /// Hub for a single world. Shows a header summary and a grid of
-/// worldbuilding sections. Only Characters is interactive in the MVP;
-/// the rest are visible-but-disabled so the roadmap is legible.
+/// worldbuilding sections. Entity sections open their list/detail flows,
+/// while roadmap-only sections stay visible but disabled.
 class WorldDashboardScreen extends StatelessWidget {
   const WorldDashboardScreen({super.key, required this.worldId});
 
@@ -86,6 +86,7 @@ class WorldDashboardScreen extends StatelessWidget {
 
         final characterCount = data.charactersFor(world.id).length;
         final locationCount = data.locationsFor(world.id).length;
+        final factionCount = data.factionsFor(world.id).length;
 
         return Scaffold(
           body: CustomScrollView(
@@ -177,8 +178,11 @@ class WorldDashboardScreen extends StatelessWidget {
                     DashboardTile(
                       icon: Icons.shield_outlined,
                       label: AppStrings.factionsSection,
-                      onTap: null,
-                      comingSoon: true,
+                      count: factionCount,
+                      onTap: () => Navigator.of(context).pushNamed(
+                        AppRoutes.factions,
+                        arguments: WorldRouteArgs(worldId: world.id),
+                      ),
                     ),
                     DashboardTile(
                       icon: Icons.menu_book_outlined,
