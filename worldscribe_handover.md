@@ -538,7 +538,7 @@ When the project flips to Blaze:
     `InMemoryDataService` (with seeded mock factions per world) and
     `FirestoreDataService` (subscription, optimistic write + rollback,
     deleteWorld batch-cleanup of the new subcollection), 8 new tests
-    (M8a)
+    (M8a, `301443d`)
   - Relationship UI — generic `EntityPickerSheet` and
     `LinkedEntitiesSection`, "Linked locations" on character detail and
     "Linked characters" on location detail, tap-to-navigate, tap-to-
