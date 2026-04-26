@@ -11,6 +11,11 @@ class AppStrings {
   static const String homeEmptyHint =
       'Tap the quill to scribe your first world.';
   static const String newWorld = 'New World';
+  static const String searchWorldsLabel = 'Search worlds';
+  static const String searchWorldsHint = 'Name, genre, or description';
+  static const String worldSearchEmpty = 'No matching worlds.';
+  static const String worldSearchEmptyHint =
+      'Try a different name, genre, or description.';
 
   // Create / edit world
   static const String createWorldTitle = 'Forge a New World';
@@ -52,6 +57,13 @@ class AppStrings {
   static const String aiForgeFailed =
       'Could not forge a character right now. Try again.';
   static const String comingSoon = 'Coming soon';
+  static const String searchWorldEntitiesLabel = 'Search this world';
+  static const String searchWorldEntitiesHint =
+      'Characters, locations, or factions';
+  static const String worldEntitySearchEmpty = 'No matching entries.';
+  static const String worldEntitySearchEmptyHint =
+      'Try another name, role, type, ideology, or description.';
+  static const String clearSearchTooltip = 'Clear search';
 
   // Characters
   static const String charactersTitle = 'Characters';

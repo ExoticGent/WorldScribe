@@ -57,6 +57,22 @@ void main() {
     expect(find.text('Neo-Havana'), findsOneWidget);
   });
 
+  testWidgets('Home search filters worlds from the local cache', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_appAtHome());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search worlds'),
+      'Neo',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Neo-Havana'), findsOneWidget);
+    expect(find.text('Aerenthal'), findsNothing);
+  });
+
   testWidgets('Create World saves and navigates to the dashboard', (
     tester,
   ) async {
@@ -530,6 +546,49 @@ void main() {
     expect(
       InMemoryDataService.instance.factionById(world.id, faction.id),
       isNull,
+    );
+  });
+
+  testWidgets('World dashboard search finds entity types and opens detail', (
+    tester,
+  ) async {
+    final world = InMemoryDataService.instance.worlds.first;
+    final location = await InMemoryDataService.instance.addLocation(
+      worldId: world.id,
+      name: 'The Salt Terraces',
+      type: 'Coastline',
+      description: '',
+    );
+
+    await tester.pumpWidget(
+      _appAtRoute(
+        AppRoutes.worldDashboard,
+        arguments: WorldRouteArgs(worldId: world.id),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final searchField = find.widgetWithText(TextField, 'Search this world');
+
+    await tester.enterText(searchField, 'Oathbroken');
+    await tester.pumpAndSettle();
+    expect(find.text('Ser Callen Hoarfrost'), findsOneWidget);
+
+    await tester.enterText(searchField, location.name);
+    await tester.pumpAndSettle();
+    expect(find.text(location.name), findsWidgets);
+
+    await tester.enterText(searchField, 'Restoration');
+    await tester.pumpAndSettle();
+    expect(find.text('House Morne'), findsOneWidget);
+
+    await tester.tap(find.text('House Morne'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('IDEOLOGY'), findsOneWidget);
+    expect(
+      find.textContaining('Restoration of the shard-crown'),
+      findsOneWidget,
     );
   });
 
