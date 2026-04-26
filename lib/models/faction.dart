@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 /// crew, or any other organized group whose members and territory shape
 /// the story.
 ///
-/// Relationships to [Character]s and [Location]s land in M8b — for now
-/// the model is a standalone CRUD entity that mirrors [Character] and
-/// [Location] in shape so the existing form / detail patterns drop
-/// straight in.
+/// [characterIds] and [locationIds] hold inverse ids for characters and
+/// locations tied to this faction. Both sides of each relationship are
+/// stored, and the data service is responsible for keeping the lists in
+/// sync.
 @immutable
 class Faction {
   const Faction({
@@ -17,6 +17,8 @@ class Faction {
     required this.ideology,
     required this.description,
     required this.createdAt,
+    this.characterIds = const [],
+    this.locationIds = const [],
   });
 
   final String id;
@@ -25,8 +27,16 @@ class Faction {
   final String ideology;
   final String description;
   final DateTime createdAt;
+  final List<String> characterIds;
+  final List<String> locationIds;
 
-  Faction copyWith({String? name, String? ideology, String? description}) {
+  Faction copyWith({
+    String? name,
+    String? ideology,
+    String? description,
+    List<String>? characterIds,
+    List<String>? locationIds,
+  }) {
     return Faction(
       id: id,
       worldId: worldId,
@@ -34,6 +44,8 @@ class Faction {
       ideology: ideology ?? this.ideology,
       description: description ?? this.description,
       createdAt: createdAt,
+      characterIds: characterIds ?? this.characterIds,
+      locationIds: locationIds ?? this.locationIds,
     );
   }
 
@@ -44,6 +56,8 @@ class Faction {
     'ideology': ideology,
     'description': description,
     'createdAt': createdAt.toIso8601String(),
+    'characterIds': characterIds,
+    'locationIds': locationIds,
   };
 
   factory Faction.fromJson(Map<String, dynamic> json) => Faction(
@@ -53,6 +67,10 @@ class Faction {
     ideology: json['ideology'] as String? ?? '',
     description: json['description'] as String? ?? '',
     createdAt: DateTime.parse(json['createdAt'] as String),
+    characterIds:
+        (json['characterIds'] as List?)?.cast<String>() ?? const <String>[],
+    locationIds:
+        (json['locationIds'] as List?)?.cast<String>() ?? const <String>[],
   );
 
   @override
@@ -63,9 +81,19 @@ class Faction {
       other.name == name &&
       other.ideology == ideology &&
       other.description == description &&
-      other.createdAt == createdAt;
+      other.createdAt == createdAt &&
+      listEquals(other.characterIds, characterIds) &&
+      listEquals(other.locationIds, locationIds);
 
   @override
-  int get hashCode =>
-      Object.hash(id, worldId, name, ideology, description, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    worldId,
+    name,
+    ideology,
+    description,
+    createdAt,
+    Object.hashAll(characterIds),
+    Object.hashAll(locationIds),
+  );
 }

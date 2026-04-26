@@ -2,10 +2,9 @@ import 'package:flutter/foundation.dart';
 
 /// A place within a world: city, ruin, region, landmark, or hideout.
 ///
-/// [characterIds] holds ids of [Character]s tied to this location. The
-/// inverse list lives on [Character.locationIds]; the data service
-/// keeps both in sync via [linkCharacterAndLocation] and
-/// [unlinkCharacterAndLocation].
+/// [characterIds] and [factionIds] hold ids of entities tied to this
+/// location. Both sides of each relationship are stored, and the data
+/// service is responsible for keeping the lists in sync.
 @immutable
 class Location {
   const Location({
@@ -16,6 +15,7 @@ class Location {
     required this.description,
     required this.createdAt,
     this.characterIds = const [],
+    this.factionIds = const [],
   });
 
   final String id;
@@ -25,12 +25,14 @@ class Location {
   final String description;
   final DateTime createdAt;
   final List<String> characterIds;
+  final List<String> factionIds;
 
   Location copyWith({
     String? name,
     String? type,
     String? description,
     List<String>? characterIds,
+    List<String>? factionIds,
   }) {
     return Location(
       id: id,
@@ -40,6 +42,7 @@ class Location {
       description: description ?? this.description,
       createdAt: createdAt,
       characterIds: characterIds ?? this.characterIds,
+      factionIds: factionIds ?? this.factionIds,
     );
   }
 
@@ -51,6 +54,7 @@ class Location {
     'description': description,
     'createdAt': createdAt.toIso8601String(),
     'characterIds': characterIds,
+    'factionIds': factionIds,
   };
 
   factory Location.fromJson(Map<String, dynamic> json) => Location(
@@ -62,6 +66,8 @@ class Location {
     createdAt: DateTime.parse(json['createdAt'] as String),
     characterIds:
         (json['characterIds'] as List?)?.cast<String>() ?? const <String>[],
+    factionIds:
+        (json['factionIds'] as List?)?.cast<String>() ?? const <String>[],
   );
 
   @override
@@ -73,7 +79,8 @@ class Location {
       other.type == type &&
       other.description == description &&
       other.createdAt == createdAt &&
-      listEquals(other.characterIds, characterIds);
+      listEquals(other.characterIds, characterIds) &&
+      listEquals(other.factionIds, factionIds);
 
   @override
   int get hashCode => Object.hash(
@@ -84,5 +91,6 @@ class Location {
     description,
     createdAt,
     Object.hashAll(characterIds),
+    Object.hashAll(factionIds),
   );
 }

@@ -119,4 +119,42 @@ abstract class WorldscribeDataService extends ChangeNotifier {
     required String characterId,
     required String locationId,
   });
+
+  /// Links a character and a faction, updating both sides atomically.
+  ///
+  /// After this call, the character's [Character.factionIds] contains
+  /// [factionId] and the faction's [Faction.characterIds] contains
+  /// [characterId]. Calling this when the link already exists is a no-op.
+  Future<void> linkCharacterAndFaction({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+  });
+
+  /// Removes a previously-linked character/faction pair, updating both
+  /// sides atomically. No-op if the link did not exist.
+  Future<void> unlinkCharacterAndFaction({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+  });
+
+  /// Links a location and a faction, updating both sides atomically.
+  ///
+  /// After this call, the location's [Location.factionIds] contains
+  /// [factionId] and the faction's [Faction.locationIds] contains
+  /// [locationId]. Calling this when the link already exists is a no-op.
+  Future<void> linkLocationAndFaction({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+  });
+
+  /// Removes a previously-linked location/faction pair, updating both
+  /// sides atomically. No-op if the link did not exist.
+  Future<void> unlinkLocationAndFaction({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+  });
 }

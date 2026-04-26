@@ -2,11 +2,9 @@ import 'package:flutter/foundation.dart';
 
 /// A single character belonging to a world.
 ///
-/// [locationIds] holds ids of [Location]s this character is associated
-/// with — the canonical "lives at / present in / tied to" link surface.
-/// Both sides of the relationship are stored (a [Location] also tracks
-/// its [characterIds]); the data service is responsible for keeping
-/// the two lists in sync.
+/// [locationIds] and [factionIds] hold ids of entities this character is
+/// associated with. Both sides of each relationship are stored, and the
+/// data service is responsible for keeping the lists in sync.
 @immutable
 class Character {
   const Character({
@@ -17,6 +15,7 @@ class Character {
     required this.description,
     required this.createdAt,
     this.locationIds = const [],
+    this.factionIds = const [],
   });
 
   final String id;
@@ -26,12 +25,14 @@ class Character {
   final String description;
   final DateTime createdAt;
   final List<String> locationIds;
+  final List<String> factionIds;
 
   Character copyWith({
     String? name,
     String? role,
     String? description,
     List<String>? locationIds,
+    List<String>? factionIds,
   }) {
     return Character(
       id: id,
@@ -41,6 +42,7 @@ class Character {
       description: description ?? this.description,
       createdAt: createdAt,
       locationIds: locationIds ?? this.locationIds,
+      factionIds: factionIds ?? this.factionIds,
     );
   }
 
@@ -52,6 +54,7 @@ class Character {
     'description': description,
     'createdAt': createdAt.toIso8601String(),
     'locationIds': locationIds,
+    'factionIds': factionIds,
   };
 
   factory Character.fromJson(Map<String, dynamic> json) => Character(
@@ -63,6 +66,8 @@ class Character {
     createdAt: DateTime.parse(json['createdAt'] as String),
     locationIds:
         (json['locationIds'] as List?)?.cast<String>() ?? const <String>[],
+    factionIds:
+        (json['factionIds'] as List?)?.cast<String>() ?? const <String>[],
   );
 
   @override
@@ -74,7 +79,8 @@ class Character {
       other.role == role &&
       other.description == description &&
       other.createdAt == createdAt &&
-      listEquals(other.locationIds, locationIds);
+      listEquals(other.locationIds, locationIds) &&
+      listEquals(other.factionIds, factionIds);
 
   @override
   int get hashCode => Object.hash(
@@ -85,5 +91,6 @@ class Character {
     description,
     createdAt,
     Object.hashAll(locationIds),
+    Object.hashAll(factionIds),
   );
 }

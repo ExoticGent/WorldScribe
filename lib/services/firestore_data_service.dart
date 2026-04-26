@@ -358,6 +358,15 @@ class FirestoreDataService extends WorldscribeDataService {
         }
       }
     }
+    final affectedFactions = <int, Faction>{};
+    final factions = _factionsByWorld[worldId];
+    if (factions != null) {
+      for (var i = 0; i < factions.length; i++) {
+        if (factions[i].characterIds.contains(characterId)) {
+          affectedFactions[i] = factions[i];
+        }
+      }
+    }
 
     final nextCharacters = List<Character>.from(characters)..removeAt(index);
     _charactersByWorld[worldId] = nextCharacters;
@@ -371,6 +380,16 @@ class FirestoreDataService extends WorldscribeDataService {
       }
       _locationsByWorld[worldId] = nextLocations;
     }
+    if (factions != null && affectedFactions.isNotEmpty) {
+      final nextFactions = List<Faction>.from(factions);
+      for (final entry in affectedFactions.entries) {
+        nextFactions[entry.key] = entry.value.copyWith(
+          characterIds: List<String>.from(entry.value.characterIds)
+            ..remove(characterId),
+        );
+      }
+      _factionsByWorld[worldId] = nextFactions;
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -382,10 +401,16 @@ class FirestoreDataService extends WorldscribeDataService {
       // Drop the dangling characterId from each linked location.
       for (final entry in affectedLocations.entries) {
         batch.set(
-          _worldsRef
-              .doc(worldId)
-              .collection('locations')
-              .doc(entry.value.id),
+          _worldsRef.doc(worldId).collection('locations').doc(entry.value.id),
+          {
+            'characterIds': FieldValue.arrayRemove([characterId]),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      for (final entry in affectedFactions.entries) {
+        batch.set(
+          _worldsRef.doc(worldId).collection('factions').doc(entry.value.id),
           {
             'characterIds': FieldValue.arrayRemove([characterId]),
           },
@@ -401,6 +426,9 @@ class FirestoreDataService extends WorldscribeDataService {
       _charactersByWorld[worldId] = rollback;
       if (locations != null && affectedLocations.isNotEmpty) {
         _locationsByWorld[worldId] = locations;
+      }
+      if (factions != null && affectedFactions.isNotEmpty) {
+        _factionsByWorld[worldId] = factions;
       }
       _errorMessage = 'Could not delete the character from Firebase.';
       notifyListeners();
@@ -445,9 +473,7 @@ class FirestoreDataService extends WorldscribeDataService {
   Future<void> updateLocation(Location updated) async {
     final locations = _locationsByWorld[updated.worldId];
     if (locations == null) return;
-    final index = locations.indexWhere(
-      (location) => location.id == updated.id,
-    );
+    final index = locations.indexWhere((location) => location.id == updated.id);
     if (index == -1) return;
 
     final previous = locations[index];
@@ -482,9 +508,7 @@ class FirestoreDataService extends WorldscribeDataService {
   }) async {
     final locations = _locationsByWorld[worldId];
     if (locations == null) return;
-    final index = locations.indexWhere(
-      (location) => location.id == locationId,
-    );
+    final index = locations.indexWhere((location) => location.id == locationId);
     if (index == -1) return;
 
     final removed = locations[index];
@@ -494,6 +518,15 @@ class FirestoreDataService extends WorldscribeDataService {
       for (var i = 0; i < characters.length; i++) {
         if (characters[i].locationIds.contains(locationId)) {
           affectedCharacters[i] = characters[i];
+        }
+      }
+    }
+    final affectedFactions = <int, Faction>{};
+    final factions = _factionsByWorld[worldId];
+    if (factions != null) {
+      for (var i = 0; i < factions.length; i++) {
+        if (factions[i].locationIds.contains(locationId)) {
+          affectedFactions[i] = factions[i];
         }
       }
     }
@@ -510,6 +543,16 @@ class FirestoreDataService extends WorldscribeDataService {
       }
       _charactersByWorld[worldId] = nextCharacters;
     }
+    if (factions != null && affectedFactions.isNotEmpty) {
+      final nextFactions = List<Faction>.from(factions);
+      for (final entry in affectedFactions.entries) {
+        nextFactions[entry.key] = entry.value.copyWith(
+          locationIds: List<String>.from(entry.value.locationIds)
+            ..remove(locationId),
+        );
+      }
+      _factionsByWorld[worldId] = nextFactions;
+    }
     _errorMessage = null;
     notifyListeners();
 
@@ -520,10 +563,16 @@ class FirestoreDataService extends WorldscribeDataService {
       );
       for (final entry in affectedCharacters.entries) {
         batch.set(
-          _worldsRef
-              .doc(worldId)
-              .collection('characters')
-              .doc(entry.value.id),
+          _worldsRef.doc(worldId).collection('characters').doc(entry.value.id),
+          {
+            'locationIds': FieldValue.arrayRemove([locationId]),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      for (final entry in affectedFactions.entries) {
+        batch.set(
+          _worldsRef.doc(worldId).collection('factions').doc(entry.value.id),
           {
             'locationIds': FieldValue.arrayRemove([locationId]),
           },
@@ -539,6 +588,9 @@ class FirestoreDataService extends WorldscribeDataService {
       _locationsByWorld[worldId] = rollback;
       if (characters != null && affectedCharacters.isNotEmpty) {
         _charactersByWorld[worldId] = characters;
+      }
+      if (factions != null && affectedFactions.isNotEmpty) {
+        _factionsByWorld[worldId] = factions;
       }
       _errorMessage = 'Could not delete the location from Firebase.';
       notifyListeners();
@@ -622,23 +674,86 @@ class FirestoreDataService extends WorldscribeDataService {
     if (index == -1) return;
 
     final removed = factions[index];
+    final affectedCharacters = <int, Character>{};
+    final characters = _charactersByWorld[worldId];
+    if (characters != null) {
+      for (var i = 0; i < characters.length; i++) {
+        if (characters[i].factionIds.contains(factionId)) {
+          affectedCharacters[i] = characters[i];
+        }
+      }
+    }
+    final affectedLocations = <int, Location>{};
+    final locations = _locationsByWorld[worldId];
+    if (locations != null) {
+      for (var i = 0; i < locations.length; i++) {
+        if (locations[i].factionIds.contains(factionId)) {
+          affectedLocations[i] = locations[i];
+        }
+      }
+    }
+
     final nextFactions = List<Faction>.from(factions)..removeAt(index);
     _factionsByWorld[worldId] = nextFactions;
+    if (characters != null && affectedCharacters.isNotEmpty) {
+      final nextCharacters = List<Character>.from(characters);
+      for (final entry in affectedCharacters.entries) {
+        nextCharacters[entry.key] = entry.value.copyWith(
+          factionIds: List<String>.from(entry.value.factionIds)
+            ..remove(factionId),
+        );
+      }
+      _charactersByWorld[worldId] = nextCharacters;
+    }
+    if (locations != null && affectedLocations.isNotEmpty) {
+      final nextLocations = List<Location>.from(locations);
+      for (final entry in affectedLocations.entries) {
+        nextLocations[entry.key] = entry.value.copyWith(
+          factionIds: List<String>.from(entry.value.factionIds)
+            ..remove(factionId),
+        );
+      }
+      _locationsByWorld[worldId] = nextLocations;
+    }
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _worldsRef
-          .doc(worldId)
-          .collection('factions')
-          .doc(factionId)
-          .delete();
+      final batch = _firestore.batch();
+      batch.delete(
+        _worldsRef.doc(worldId).collection('factions').doc(factionId),
+      );
+      for (final entry in affectedCharacters.entries) {
+        batch.set(
+          _worldsRef.doc(worldId).collection('characters').doc(entry.value.id),
+          {
+            'factionIds': FieldValue.arrayRemove([factionId]),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      for (final entry in affectedLocations.entries) {
+        batch.set(
+          _worldsRef.doc(worldId).collection('locations').doc(entry.value.id),
+          {
+            'factionIds': FieldValue.arrayRemove([factionId]),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      await batch.commit();
     } catch (_) {
       final rollback = List<Faction>.from(
         _factionsByWorld[worldId] ?? const <Faction>[],
       );
       rollback.insert(index, removed);
       _factionsByWorld[worldId] = rollback;
+      if (characters != null && affectedCharacters.isNotEmpty) {
+        _charactersByWorld[worldId] = characters;
+      }
+      if (locations != null && affectedLocations.isNotEmpty) {
+        _locationsByWorld[worldId] = locations;
+      }
       _errorMessage = 'Could not delete the faction from Firebase.';
       notifyListeners();
       rethrow;
@@ -671,6 +786,62 @@ class FirestoreDataService extends WorldscribeDataService {
       worldId: worldId,
       characterId: characterId,
       locationId: locationId,
+      add: false,
+    );
+  }
+
+  @override
+  Future<void> linkCharacterAndFaction({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+  }) {
+    return _writeCharacterFactionLink(
+      worldId: worldId,
+      characterId: characterId,
+      factionId: factionId,
+      add: true,
+    );
+  }
+
+  @override
+  Future<void> unlinkCharacterAndFaction({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+  }) {
+    return _writeCharacterFactionLink(
+      worldId: worldId,
+      characterId: characterId,
+      factionId: factionId,
+      add: false,
+    );
+  }
+
+  @override
+  Future<void> linkLocationAndFaction({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+  }) {
+    return _writeLocationFactionLink(
+      worldId: worldId,
+      locationId: locationId,
+      factionId: factionId,
+      add: true,
+    );
+  }
+
+  @override
+  Future<void> unlinkLocationAndFaction({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+  }) {
+    return _writeLocationFactionLink(
+      worldId: worldId,
+      locationId: locationId,
+      factionId: factionId,
       add: false,
     );
   }
@@ -756,6 +927,164 @@ class FirestoreDataService extends WorldscribeDataService {
       _errorMessage = add
           ? 'Could not link the character and location.'
           : 'Could not unlink the character and location.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> _writeCharacterFactionLink({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+    required bool add,
+  }) async {
+    final characters = _charactersByWorld[worldId];
+    final factions = _factionsByWorld[worldId];
+    if (characters == null || factions == null) return;
+
+    final ci = characters.indexWhere((c) => c.id == characterId);
+    final fi = factions.indexWhere((f) => f.id == factionId);
+    if (ci == -1 || fi == -1) return;
+
+    final character = characters[ci];
+    final faction = factions[fi];
+    final hasLink =
+        character.factionIds.contains(factionId) &&
+        faction.characterIds.contains(characterId);
+    if (add && hasLink) return;
+    if (!add &&
+        !character.factionIds.contains(factionId) &&
+        !faction.characterIds.contains(characterId)) {
+      return;
+    }
+
+    final nextCharacterFactionIds = add
+        ? (character.factionIds.contains(factionId)
+              ? character.factionIds
+              : [...character.factionIds, factionId])
+        : (List<String>.from(character.factionIds)..remove(factionId));
+    final nextFactionCharacterIds = add
+        ? (faction.characterIds.contains(characterId)
+              ? faction.characterIds
+              : [...faction.characterIds, characterId])
+        : (List<String>.from(faction.characterIds)..remove(characterId));
+
+    final nextCharacters = List<Character>.from(characters);
+    nextCharacters[ci] = character.copyWith(
+      factionIds: nextCharacterFactionIds,
+    );
+    final nextFactions = List<Faction>.from(factions);
+    nextFactions[fi] = faction.copyWith(characterIds: nextFactionCharacterIds);
+    _charactersByWorld[worldId] = nextCharacters;
+    _factionsByWorld[worldId] = nextFactions;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final batch = _firestore.batch();
+      final characterRef = _worldsRef
+          .doc(worldId)
+          .collection('characters')
+          .doc(characterId);
+      final factionRef = _worldsRef
+          .doc(worldId)
+          .collection('factions')
+          .doc(factionId);
+      batch.set(characterRef, {
+        'factionIds': add
+            ? FieldValue.arrayUnion([factionId])
+            : FieldValue.arrayRemove([factionId]),
+      }, SetOptions(merge: true));
+      batch.set(factionRef, {
+        'characterIds': add
+            ? FieldValue.arrayUnion([characterId])
+            : FieldValue.arrayRemove([characterId]),
+      }, SetOptions(merge: true));
+      await batch.commit();
+    } catch (_) {
+      _charactersByWorld[worldId] = characters;
+      _factionsByWorld[worldId] = factions;
+      _errorMessage = add
+          ? 'Could not link the character and faction.'
+          : 'Could not unlink the character and faction.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  Future<void> _writeLocationFactionLink({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+    required bool add,
+  }) async {
+    final locations = _locationsByWorld[worldId];
+    final factions = _factionsByWorld[worldId];
+    if (locations == null || factions == null) return;
+
+    final li = locations.indexWhere((l) => l.id == locationId);
+    final fi = factions.indexWhere((f) => f.id == factionId);
+    if (li == -1 || fi == -1) return;
+
+    final location = locations[li];
+    final faction = factions[fi];
+    final hasLink =
+        location.factionIds.contains(factionId) &&
+        faction.locationIds.contains(locationId);
+    if (add && hasLink) return;
+    if (!add &&
+        !location.factionIds.contains(factionId) &&
+        !faction.locationIds.contains(locationId)) {
+      return;
+    }
+
+    final nextLocationFactionIds = add
+        ? (location.factionIds.contains(factionId)
+              ? location.factionIds
+              : [...location.factionIds, factionId])
+        : (List<String>.from(location.factionIds)..remove(factionId));
+    final nextFactionLocationIds = add
+        ? (faction.locationIds.contains(locationId)
+              ? faction.locationIds
+              : [...faction.locationIds, locationId])
+        : (List<String>.from(faction.locationIds)..remove(locationId));
+
+    final nextLocations = List<Location>.from(locations);
+    nextLocations[li] = location.copyWith(factionIds: nextLocationFactionIds);
+    final nextFactions = List<Faction>.from(factions);
+    nextFactions[fi] = faction.copyWith(locationIds: nextFactionLocationIds);
+    _locationsByWorld[worldId] = nextLocations;
+    _factionsByWorld[worldId] = nextFactions;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final batch = _firestore.batch();
+      final locationRef = _worldsRef
+          .doc(worldId)
+          .collection('locations')
+          .doc(locationId);
+      final factionRef = _worldsRef
+          .doc(worldId)
+          .collection('factions')
+          .doc(factionId);
+      batch.set(locationRef, {
+        'factionIds': add
+            ? FieldValue.arrayUnion([factionId])
+            : FieldValue.arrayRemove([factionId]),
+      }, SetOptions(merge: true));
+      batch.set(factionRef, {
+        'locationIds': add
+            ? FieldValue.arrayUnion([locationId])
+            : FieldValue.arrayRemove([locationId]),
+      }, SetOptions(merge: true));
+      await batch.commit();
+    } catch (_) {
+      _locationsByWorld[worldId] = locations;
+      _factionsByWorld[worldId] = factions;
+      _errorMessage = add
+          ? 'Could not link the location and faction.'
+          : 'Could not unlink the location and faction.';
       notifyListeners();
       rethrow;
     }
@@ -920,6 +1249,8 @@ class FirestoreDataService extends WorldscribeDataService {
       createdAt: _readDate(data['createdAt']),
       locationIds:
           (data['locationIds'] as List?)?.cast<String>() ?? const <String>[],
+      factionIds:
+          (data['factionIds'] as List?)?.cast<String>() ?? const <String>[],
     );
   }
 
@@ -937,6 +1268,8 @@ class FirestoreDataService extends WorldscribeDataService {
       createdAt: _readDate(data['createdAt']),
       characterIds:
           (data['characterIds'] as List?)?.cast<String>() ?? const <String>[],
+      factionIds:
+          (data['factionIds'] as List?)?.cast<String>() ?? const <String>[],
     );
   }
 
@@ -952,6 +1285,10 @@ class FirestoreDataService extends WorldscribeDataService {
       ideology: data['ideology'] as String? ?? '',
       description: data['description'] as String? ?? '',
       createdAt: _readDate(data['createdAt']),
+      characterIds:
+          (data['characterIds'] as List?)?.cast<String>() ?? const <String>[],
+      locationIds:
+          (data['locationIds'] as List?)?.cast<String>() ?? const <String>[],
     );
   }
 
@@ -968,6 +1305,7 @@ class FirestoreDataService extends WorldscribeDataService {
     'description': character.description,
     'createdAt': Timestamp.fromDate(character.createdAt),
     'locationIds': character.locationIds,
+    'factionIds': character.factionIds,
   };
 
   Map<String, dynamic> _locationToFirestore(Location location) => {
@@ -976,6 +1314,7 @@ class FirestoreDataService extends WorldscribeDataService {
     'description': location.description,
     'createdAt': Timestamp.fromDate(location.createdAt),
     'characterIds': location.characterIds,
+    'factionIds': location.factionIds,
   };
 
   Map<String, dynamic> _factionToFirestore(Faction faction) => {
@@ -983,6 +1322,8 @@ class FirestoreDataService extends WorldscribeDataService {
     'ideology': faction.ideology,
     'description': faction.description,
     'createdAt': Timestamp.fromDate(faction.createdAt),
+    'characterIds': faction.characterIds,
+    'locationIds': faction.locationIds,
   };
 
   DateTime _readDate(Object? value) {

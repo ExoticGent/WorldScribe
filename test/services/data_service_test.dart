@@ -130,10 +130,7 @@ void main() {
       description: '',
     );
 
-    await service.deleteLocation(
-      worldId: world.id,
-      locationId: location.id,
-    );
+    await service.deleteLocation(worldId: world.id, locationId: location.id);
 
     expect(service.locationById(world.id, location.id), isNull);
   });
@@ -203,7 +200,10 @@ void main() {
 
       expect(service.factionsFor(world.id).length, before + 1);
       expect(service.factionsFor(world.id).first.id, faction.id);
-      expect(service.factionById(world.id, faction.id)?.name, 'The Glass Court');
+      expect(
+        service.factionById(world.id, faction.id)?.name,
+        'The Glass Court',
+      );
     });
 
     test('updateFaction changes the stored fields', () async {
@@ -339,45 +339,46 @@ void main() {
       );
     });
 
-    test('unlinkCharacterAndLocation removes the link from both sides',
-        () async {
-      final world = service.worlds.first;
-      final character = await service.addCharacter(
-        worldId: world.id,
-        name: 'Veyra',
-        role: 'Heir',
-        description: '',
-      );
-      final location = await service.addLocation(
-        worldId: world.id,
-        name: 'Karr',
-        type: 'Salt mine',
-        description: '',
-      );
+    test(
+      'unlinkCharacterAndLocation removes the link from both sides',
+      () async {
+        final world = service.worlds.first;
+        final character = await service.addCharacter(
+          worldId: world.id,
+          name: 'Veyra',
+          role: 'Heir',
+          description: '',
+        );
+        final location = await service.addLocation(
+          worldId: world.id,
+          name: 'Karr',
+          type: 'Salt mine',
+          description: '',
+        );
 
-      await service.linkCharacterAndLocation(
-        worldId: world.id,
-        characterId: character.id,
-        locationId: location.id,
-      );
-      await service.unlinkCharacterAndLocation(
-        worldId: world.id,
-        characterId: character.id,
-        locationId: location.id,
-      );
+        await service.linkCharacterAndLocation(
+          worldId: world.id,
+          characterId: character.id,
+          locationId: location.id,
+        );
+        await service.unlinkCharacterAndLocation(
+          worldId: world.id,
+          characterId: character.id,
+          locationId: location.id,
+        );
 
-      expect(
-        service.characterById(world.id, character.id)?.locationIds,
-        isEmpty,
-      );
-      expect(
-        service.locationById(world.id, location.id)?.characterIds,
-        isEmpty,
-      );
-    });
+        expect(
+          service.characterById(world.id, character.id)?.locationIds,
+          isEmpty,
+        );
+        expect(
+          service.locationById(world.id, location.id)?.characterIds,
+          isEmpty,
+        );
+      },
+    );
 
-    test('deleting a character cascades the link off its locations',
-        () async {
+    test('deleting a character cascades the link off its locations', () async {
       final world = service.worlds.first;
       final character = await service.addCharacter(
         worldId: world.id,
@@ -408,8 +409,7 @@ void main() {
       );
     });
 
-    test('deleting a location cascades the link off its characters',
-        () async {
+    test('deleting a location cascades the link off its characters', () async {
       final world = service.worlds.first;
       final character = await service.addCharacter(
         worldId: world.id,
@@ -429,15 +429,292 @@ void main() {
         locationId: location.id,
       );
 
-      await service.deleteLocation(
-        worldId: world.id,
-        locationId: location.id,
-      );
+      await service.deleteLocation(worldId: world.id, locationId: location.id);
 
       expect(
         service.characterById(world.id, character.id)?.locationIds,
         isEmpty,
       );
     });
+
+    test('linkCharacterAndFaction updates both sides', () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'House Morne',
+        ideology: 'Restoration.',
+        description: '',
+      );
+
+      await service.linkCharacterAndFaction(
+        worldId: world.id,
+        characterId: character.id,
+        factionId: faction.id,
+      );
+
+      expect(
+        service.characterById(world.id, character.id)?.factionIds,
+        contains(faction.id),
+      );
+      expect(
+        service.factionById(world.id, faction.id)?.characterIds,
+        contains(character.id),
+      );
+    });
+
+    test('linkLocationAndFaction updates both sides', () async {
+      final world = service.worlds.first;
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'House Morne',
+        ideology: 'Restoration.',
+        description: '',
+      );
+
+      await service.linkLocationAndFaction(
+        worldId: world.id,
+        locationId: location.id,
+        factionId: faction.id,
+      );
+
+      expect(
+        service.locationById(world.id, location.id)?.factionIds,
+        contains(faction.id),
+      );
+      expect(
+        service.factionById(world.id, faction.id)?.locationIds,
+        contains(location.id),
+      );
+    });
+
+    test(
+      'linking faction pairs twice keeps a single entry on each side',
+      () async {
+        final world = service.worlds.first;
+        final character = await service.addCharacter(
+          worldId: world.id,
+          name: 'Veyra',
+          role: 'Heir',
+          description: '',
+        );
+        final location = await service.addLocation(
+          worldId: world.id,
+          name: 'Karr',
+          type: 'Salt mine',
+          description: '',
+        );
+        final faction = await service.addFaction(
+          worldId: world.id,
+          name: 'House Morne',
+          ideology: 'Restoration.',
+          description: '',
+        );
+
+        await service.linkCharacterAndFaction(
+          worldId: world.id,
+          characterId: character.id,
+          factionId: faction.id,
+        );
+        await service.linkCharacterAndFaction(
+          worldId: world.id,
+          characterId: character.id,
+          factionId: faction.id,
+        );
+        await service.linkLocationAndFaction(
+          worldId: world.id,
+          locationId: location.id,
+          factionId: faction.id,
+        );
+        await service.linkLocationAndFaction(
+          worldId: world.id,
+          locationId: location.id,
+          factionId: faction.id,
+        );
+
+        expect(
+          service
+              .characterById(world.id, character.id)
+              ?.factionIds
+              .where((id) => id == faction.id)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .locationById(world.id, location.id)
+              ?.factionIds
+              .where((id) => id == faction.id)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .factionById(world.id, faction.id)
+              ?.characterIds
+              .where((id) => id == character.id)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .factionById(world.id, faction.id)
+              ?.locationIds
+              .where((id) => id == location.id)
+              .length,
+          1,
+        );
+      },
+    );
+
+    test('unlink faction relationships removes both sides', () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'House Morne',
+        ideology: 'Restoration.',
+        description: '',
+      );
+
+      await service.linkCharacterAndFaction(
+        worldId: world.id,
+        characterId: character.id,
+        factionId: faction.id,
+      );
+      await service.linkLocationAndFaction(
+        worldId: world.id,
+        locationId: location.id,
+        factionId: faction.id,
+      );
+      await service.unlinkCharacterAndFaction(
+        worldId: world.id,
+        characterId: character.id,
+        factionId: faction.id,
+      );
+      await service.unlinkLocationAndFaction(
+        worldId: world.id,
+        locationId: location.id,
+        factionId: faction.id,
+      );
+
+      expect(
+        service.characterById(world.id, character.id)?.factionIds,
+        isEmpty,
+      );
+      expect(service.locationById(world.id, location.id)?.factionIds, isEmpty);
+      expect(service.factionById(world.id, faction.id)?.characterIds, isEmpty);
+      expect(service.factionById(world.id, faction.id)?.locationIds, isEmpty);
+    });
+
+    test('deleting linked entities clears faction inverses', () async {
+      final world = service.worlds.first;
+      final character = await service.addCharacter(
+        worldId: world.id,
+        name: 'Veyra',
+        role: 'Heir',
+        description: '',
+      );
+      final location = await service.addLocation(
+        worldId: world.id,
+        name: 'Karr',
+        type: 'Salt mine',
+        description: '',
+      );
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'House Morne',
+        ideology: 'Restoration.',
+        description: '',
+      );
+      await service.linkCharacterAndFaction(
+        worldId: world.id,
+        characterId: character.id,
+        factionId: faction.id,
+      );
+      await service.linkLocationAndFaction(
+        worldId: world.id,
+        locationId: location.id,
+        factionId: faction.id,
+      );
+
+      await service.deleteCharacter(
+        worldId: world.id,
+        characterId: character.id,
+      );
+      await service.deleteLocation(worldId: world.id, locationId: location.id);
+
+      expect(service.factionById(world.id, faction.id)?.characterIds, isEmpty);
+      expect(service.factionById(world.id, faction.id)?.locationIds, isEmpty);
+    });
+
+    test(
+      'deleting a faction clears links off characters and locations',
+      () async {
+        final world = service.worlds.first;
+        final character = await service.addCharacter(
+          worldId: world.id,
+          name: 'Veyra',
+          role: 'Heir',
+          description: '',
+        );
+        final location = await service.addLocation(
+          worldId: world.id,
+          name: 'Karr',
+          type: 'Salt mine',
+          description: '',
+        );
+        final faction = await service.addFaction(
+          worldId: world.id,
+          name: 'House Morne',
+          ideology: 'Restoration.',
+          description: '',
+        );
+        await service.linkCharacterAndFaction(
+          worldId: world.id,
+          characterId: character.id,
+          factionId: faction.id,
+        );
+        await service.linkLocationAndFaction(
+          worldId: world.id,
+          locationId: location.id,
+          factionId: faction.id,
+        );
+
+        await service.deleteFaction(worldId: world.id, factionId: faction.id);
+
+        expect(
+          service.characterById(world.id, character.id)?.factionIds,
+          isEmpty,
+        );
+        expect(
+          service.locationById(world.id, location.id)?.factionIds,
+          isEmpty,
+        );
+        expect(service.factionById(world.id, faction.id), isNull);
+      },
+    );
   });
 }

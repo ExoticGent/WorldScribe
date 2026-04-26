@@ -36,8 +36,8 @@ Today the user can:
 - Browse worlds from the home screen and open a world dashboard
 - Add, edit, and delete characters in a world (via dual-mode sheet)
 - Add, edit, and delete locations in a world (via dual-mode sheet)
-- Create, update, and delete factions in a world at the data-service
-  level (CRUD only — UI surface lands in M8c)
+- Create, update, delete, and link factions to characters/locations at
+  the data-service level (UI surface lands in M8c)
 - View character detail and location detail
 - Generate a character via the AI Forge sheet (wired against a Cloud
   Function — currently behind a fake service in tests; see Firebase
@@ -62,13 +62,15 @@ App + UX:
   Tap a row to navigate to the linked entity, tap the unlink icon to
   remove the link, or use the action button to open a picker that lists
   only the unlinked entities in the world.
-- Faction CRUD on the data layer (M8a) — `addFaction`, `updateFaction`,
-  `deleteFaction`, `factionsFor(worldId)`, `factionById` on the abstract
+- Faction data layer (M8a/M8b) — `addFaction`, `updateFaction`,
+  `deleteFaction`, `factionsFor(worldId)`, `factionById`, plus atomic
+  character/faction and location/faction link primitives on the abstract
   service, implemented on both `InMemoryDataService` and
   `FirestoreDataService`. Factions live under
   `users/{uid}/worlds/{worldId}/factions/{factionId}` with name,
-  ideology, description, createdAt — no relationship arrays yet (those
-  land in M8b). `deleteWorld` cascades the new subcollection.
+  ideology, description, createdAt, `characterIds`, and `locationIds`.
+  Characters and locations now also carry `factionIds`; delete cascades
+  remove dangling ids from every inverse list.
 - AI Forge bottom sheet (character generation only, one entity at a time)
 - Loading and error states for data-backed screens
 
@@ -118,16 +120,18 @@ Backend + data layer:
   screens don't reach into concrete classes.
 - AI Forge wired through a separate `AiForgeService` so the UI degrades
   cleanly when Functions are unavailable.
-- **Relationship layer (M7a)** — bidirectional, typed references stored
-  on both ends. `Character` carries `List<String> locationIds`; `Location`
-  carries `List<String> characterIds`. The data-service abstraction owns
-  the link primitive (`linkCharacterAndLocation` /
-  `unlinkCharacterAndLocation`) so screens never have to write both sides
-  themselves. Both implementations:
+- **Relationship layer (M7a/M8b)** — bidirectional, typed references
+  stored on both ends. `Character` carries `locationIds` and
+  `factionIds`; `Location` carries `characterIds` and `factionIds`;
+  `Faction` carries `characterIds` and `locationIds`. The data-service
+  abstraction owns every link primitive (`linkCharacterAndLocation`,
+  `linkCharacterAndFaction`, `linkLocationAndFaction`, and unlink twins)
+  so screens never have to write both sides themselves. Both
+  implementations:
   - Are idempotent (linking the same pair twice is a no-op; unlinking a
     non-existent link is a no-op)
-  - Cascade on delete — deleting a character strips its id from every
-    location's `characterIds`, and vice versa for locations
+  - Cascade on delete — deleting any linked character, location, or
+    faction strips its id from every inverse relationship array
   - Atomic on Firestore — link/unlink and cascade-delete go through a
     single Firestore batch using `FieldValue.arrayUnion` /
     `FieldValue.arrayRemove`, with optimistic local cache updates and
@@ -148,16 +152,16 @@ Firebase integration:
 - Cloud Functions scaffold (`functions/src/index.ts`) for the
   `generateCharacter` callable
 
-Tests + quality gates (75 passing as of this handoff):
+Tests + quality gates (87 passing as of this handoff):
 
 - `flutter analyze` clean
-- `flutter test` - all green
+- `flutter test` - all green (87 tests)
 - `flutter build apk --debug` and `flutter build web` both succeed
 
 Latest full scan (2026-04-26):
 
 - `flutter analyze` passed
-- `flutter test` passed (75 tests)
+- `flutter test` passed (87 tests)
 - `flutter build web` passed
 - `flutter build apk --debug` passed
 - `npm --prefix functions run build` passed
@@ -186,14 +190,16 @@ Test files:
   data-service boundary.
 - `test/services/data_service_test.dart` — in-memory service behavior
   including a `factions` group (CRUD + cascade on world delete) and a
-  `relationships` group (link / unlink idempotency, cascade-delete on
-  both sides)
+  `relationships` group (character/location plus character/faction and
+  location/faction link / unlink idempotency, cascade-delete on all
+  linked sides)
 - `test/services/firestore_data_service_test.dart` — Firestore service
   snapshot sync and CRUD for worlds, characters, locations, and factions
   (uses `fake_cloud_firestore`); also covers the `relationships` group
-  end-to-end against the fake Firestore (atomic batch writes, cascade-
-  delete writes through to the inverse-side doc), and asserts that
-  deleting a world wipes its `factions` subcollection alongside
+  end-to-end against the fake Firestore (atomic batch writes for
+  character/location, character/faction, and location/faction links;
+  cascade-delete writes through to the inverse-side docs), and asserts
+  that deleting a world wipes its `factions` subcollection alongside
   `characters` and `locations`
 - `test/widgets/confirm_dialog_test.dart` — destructive vs non-
   destructive styling, confirm/cancel/scrim-dismiss return values
@@ -219,9 +225,6 @@ Manual device smoke test:
 - Live Gemini secret + Function deployment (intentionally postponed —
   needs Blaze billing on `worldscribe-9c753`; see "AI Forge live
   deployment" below)
-- Faction relationships (M8b) — `factionIds` on Character/Location and
-  inverse arrays on Faction, atomic both-sides link primitives, cascade
-  on delete. Today factions are standalone records with no edges.
 - Faction UI (M8c) — list screen, detail screen, dual-mode add/edit
   sheet, dashboard tile. The data layer is ready; nothing is wired into
   the UI yet.
@@ -384,29 +387,31 @@ users/
             role
             description
             createdAt
-            locationIds: [locationId, ...]   # M7a — typed ref to locations
+            locationIds: [locationId, ...]
+            factionIds: [factionId, ...]
         locations/
           {locationId}/
             name
             type
             description
             createdAt
-            characterIds: [characterId, ...] # M7a — typed ref to characters
-        factions/                          # M8a — CRUD only; relations land in M8b
+            characterIds: [characterId, ...]
+            factionIds: [factionId, ...]
+        factions/
           {factionId}/
             name
             ideology
             description
             createdAt
+            characterIds: [characterId, ...]
+            locationIds: [locationId, ...]
 ```
 
-The two M7a arrays are denormalized — the same edge appears on both
+Relationship arrays are denormalized — the same edge appears on both
 sides. The data service is the only thing that writes them, and always
 writes both sides in a single Firestore batch using
 `FieldValue.arrayUnion` and `FieldValue.arrayRemove`. Treat them as
-set-like (no duplicates). M8b will follow the same shape for
-characters ↔ factions and locations ↔ factions: typed `<entity>Ids`
-arrays on both ends, mutated through service-level link primitives.
+set-like (no duplicates).
 
 Firestore rules cover any new subcollection automatically through the
 recursive `match /{document=**}` rule under each user doc — no rules
@@ -490,26 +495,18 @@ turn a structured-CRUD app into an actual worldbuilder's tool.
 
 Foreground (each fits the small-milestone rule):
 
-1. **M8b — Faction relationships.** Add `factionIds` to `Character`
-   and `Location`, add `characterIds` + `locationIds` to `Faction`,
-   and introduce two new atomic primitives on the data service:
-   `linkCharacterAndFaction` and `linkLocationAndFaction` (and their
-   unlink twins). Mirror M7a end-to-end: idempotent links, Firestore
-   batch with `FieldValue.arrayUnion` / `arrayRemove`, optimistic local
-   cache + rollback, cascade-on-delete from any side. Add tests on
-   both `InMemoryDataService` and `FirestoreDataService`.
-2. **M8c — Faction UI.** List screen, detail screen, dual-mode add/edit
+1. **M8c — Faction UI.** List screen, detail screen, dual-mode add/edit
    sheet, and a dashboard tile that follows the existing pattern. The
    detail screen drops in two `LinkedEntitiesSection`s (characters,
    locations) reusing the M7b picker. No new picker or section widget
    should be needed.
-3. **M8.5 — Global search.** Tiny milestone, huge UX win. A search
+2. **M8.5 — Global search.** Tiny milestone, huge UX win. A search
    field on `HomeScreen` and `WorldDashboardScreen` that filters the
    current world's characters / locations / factions (and any future
    entity) by name and other text fields against the in-memory cache.
    No backend work — `dataService` already has everything cached.
    Tap a result to push the matching detail screen.
-4. **M9a — Rich-text lore notes with `@mentions`.** Free-form long-text
+3. **M9a — Rich-text lore notes with `@mentions`.** Free-form long-text
    entries scoped to a world. Description must be markdown-aware
    (headings, lists, italics, links) and support inline `@mentions` of
    any other entity, rendered as clickable chips that navigate to the
@@ -518,34 +515,34 @@ Foreground (each fits the small-milestone rule):
    `@`-trigger autocomplete as a first-class feature, not an
    afterthought. **Do not ship plain-text lore — the writing-tool feel
    depends on this.**
-5. **M9b — Images per entity.** Single image upload for character,
+4. **M9b — Images per entity.** Single image upload for character,
    location, and faction (and lore once it lands). Stored in Firebase
    Storage under `users/{uid}/worlds/{worldId}/images/{entityId}`.
    Detail headers carry the image; cards show a thumbnail. Anonymous
    users hit Storage rules that mirror the Firestore ones. Faceless
    characters are forgettable characters — this transforms the feel.
-6. **M9c — Tags.** Free-form, comma-or-chip-input tags on every entity.
+5. **M9c — Tags.** Free-form, comma-or-chip-input tags on every entity.
    Orthogonal to the typed-relationship system: `#ally-of-veyra`,
    `#chapter-3`, `#dark-fantasy`. Filter the world dashboard by tag.
    Tag autocomplete from existing tags in the same world.
-7. **M10 — Timelines.** Per-world timeline of events, each event
+6. **M10 — Timelines.** Per-world timeline of events, each event
    carrying a date (or relative anchor), a title, a description, and
    any number of typed `<entity>Ids` linking it to characters /
    locations / factions / lore. Horizontal scroll, grouped by era.
    This is the feature serious worldbuilders consume daily — it is
    where the structured-data approach finally pays off over a wiki.
-8. **M11 — Real sign-in flow.** Email + Google sign-in, with
+7. **M11 — Real sign-in flow.** Email + Google sign-in, with
    anonymous as guest fallback. Then revisit whether to disable
    Anonymous Auth and add account-recovery / data-portability
    safeguards.
-9. **AI Forge expansion** — extend the `generateCharacter` callable
+8. **AI Forge expansion** — extend the `generateCharacter` callable
    shape to also support locations, factions, and lore, with the UI
    choosing which entity to forge. Ideally generate *with*
    relationships ("create a character who is an enemy of Veyra and
    lives in Karr"), since the relationship layer will be in place.
-10. **Native device smoke test** — run create/edit/delete world,
-    character, location, and faction flows against live Firestore on
-    Android + iOS, confirm no fallback to the mock store.
+9. **Native device smoke test** — run create/edit/delete world,
+   character, location, and faction flows against live Firestore on
+   Android + iOS, confirm no fallback to the mock store.
 
 Deferred / explicitly skipped for now:
 
@@ -565,15 +562,15 @@ Deferred / explicitly skipped for now:
 Future schema note: relationships today are **untyped** ("Veyra is
 linked to Karr", full stop). In real worldbuilding the *kind* of edge
 matters: `BORN_IN`, `IMPRISONED_IN`, `RULES`, `ALLIED_WITH`, etc.
-M8b should not entrench the unlabeled model — leave room to add a
-`label` field per edge later. Don't refactor pre-emptively, but if
-M9 / M10 surfaces real demand, the next pass adds labelled edges.
+The current faction relationship layer preserves that unlabeled model;
+leave room to add a `label` field per edge later. Don't refactor
+pre-emptively, but if M9 / M10 surfaces real demand, the next pass adds
+labelled edges.
 
 Background (quality / housekeeping):
 
-- Add tests for location edit and location delete (currently location
-  add and the discard-changes guard are covered; explicit edit + delete
-  cases for locations would round out parity with characters).
+- Add widget coverage for the faction list/detail/add/edit/delete/link
+  flows as soon as M8c lands.
 - Consider an integration test that boots through `AppBootstrap` with
   `fake_cloud_firestore` to exercise the real wiring end-to-end.
 - Revisit Anonymous Auth once M11 ships.
@@ -582,7 +579,7 @@ When the project flips to Blaze:
 
 - Set `GEMINI_API_KEY` secret, deploy `generateCharacter`, smoke-test
   AI Forge live, then start expanding AI Forge beyond characters per
-  step 9 above.
+  step 8 above.
 
 ---
 
@@ -614,6 +611,11 @@ When the project flips to Blaze:
 
 - Current date for this handoff: 2026-04-26.
 - Last shipped milestones (most recent first):
+  - Faction relationships on the data layer — `factionIds` on
+    `Character` and `Location`, inverse `characterIds` / `locationIds`
+    on `Faction`, atomic link/unlink primitives for character/faction
+    and location/faction, cascade-delete from every linked side, and
+    12 new service tests across in-memory and fake Firestore (M8b).
   - Faction CRUD on the data layer — `Faction` model, abstract methods
     on `WorldscribeDataService`, full implementations on both
     `InMemoryDataService` (with seeded mock factions per world) and
@@ -634,4 +636,4 @@ When the project flips to Blaze:
   - Input length caps + centralized form validators (`252d548`)
   - Character edit flow + unified detail scaffolding (`93ab7b9`)
   - Location detail screen with edit + delete (`a792a51`)
-- 75 tests passing at handoff.
+- 87 tests passing at handoff.

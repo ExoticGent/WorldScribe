@@ -83,16 +83,12 @@ void main() {
     required String description,
     required DateTime createdAt,
   }) {
-    return worldsRef()
-        .doc(worldId)
-        .collection('factions')
-        .doc(factionId)
-        .set({
-          'name': name,
-          'ideology': ideology,
-          'description': description,
-          'createdAt': Timestamp.fromDate(createdAt),
-        });
+    return worldsRef().doc(worldId).collection('factions').doc(factionId).set({
+      'name': name,
+      'ideology': ideology,
+      'description': description,
+      'createdAt': Timestamp.fromDate(createdAt),
+    });
   }
 
   setUp(() {
@@ -400,10 +396,7 @@ void main() {
     );
     expect(updatedLocationDoc.data()?['type'], 'Flood gate');
 
-    await service.deleteLocation(
-      worldId: 'world-2',
-      locationId: location.id,
-    );
+    await service.deleteLocation(worldId: 'world-2', locationId: location.id);
     await settleFirestore();
 
     expect(service.locationById('world-2', location.id), isNull);
@@ -446,45 +439,50 @@ void main() {
     await service.initialize();
     await settleFirestore();
 
+    expect(service.factionsFor('world-fac').map((faction) => faction.id), [
+      'fac-newer',
+      'fac-older',
+    ]);
     expect(
-      service.factionsFor('world-fac').map((faction) => faction.id),
-      ['fac-newer', 'fac-older'],
+      service.factionById('world-fac', 'fac-newer')?.name,
+      'The New Reading',
     );
-    expect(service.factionById('world-fac', 'fac-newer')?.name, 'The New Reading');
   });
 
-  test('live snapshots update the local cache for remote faction writes',
-      () async {
-    await service.initialize();
+  test(
+    'live snapshots update the local cache for remote faction writes',
+    () async {
+      await service.initialize();
 
-    await seedWorld(
-      id: 'world-fac-remote',
-      name: 'Mire Marches',
-      genre: 'Dark fantasy',
-      description: 'Sunken halls below the river plain.',
-      createdAt: DateTime.utc(2025, 6, 10),
-    );
-    await settleFirestore();
+      await seedWorld(
+        id: 'world-fac-remote',
+        name: 'Mire Marches',
+        genre: 'Dark fantasy',
+        description: 'Sunken halls below the river plain.',
+        createdAt: DateTime.utc(2025, 6, 10),
+      );
+      await settleFirestore();
 
-    await seedFaction(
-      worldId: 'world-fac-remote',
-      factionId: 'fac-remote',
-      name: 'The Drowned Hand',
-      ideology: 'Tribute to the river.',
-      description: 'Smugglers and reed-walkers loyal to the flood.',
-      createdAt: DateTime.utc(2025, 6, 11),
-    );
-    await settleFirestore();
+      await seedFaction(
+        worldId: 'world-fac-remote',
+        factionId: 'fac-remote',
+        name: 'The Drowned Hand',
+        ideology: 'Tribute to the river.',
+        description: 'Smugglers and reed-walkers loyal to the flood.',
+        createdAt: DateTime.utc(2025, 6, 11),
+      );
+      await settleFirestore();
 
-    expect(
-      service.factionById('world-fac-remote', 'fac-remote')?.name,
-      'The Drowned Hand',
-    );
-    expect(
-      service.factionById('world-fac-remote', 'fac-remote')?.ideology,
-      'Tribute to the river.',
-    );
-  });
+      expect(
+        service.factionById('world-fac-remote', 'fac-remote')?.name,
+        'The Drowned Hand',
+      );
+      expect(
+        service.factionById('world-fac-remote', 'fac-remote')?.ideology,
+        'Tribute to the river.',
+      );
+    },
+  );
 
   test('faction CRUD persists to Firestore', () async {
     await seedWorld(
@@ -506,10 +504,7 @@ void main() {
     );
     await settleFirestore();
 
-    expect(
-      service.factionById('world-3', faction.id)?.name,
-      'Lanternkeepers',
-    );
+    expect(service.factionById('world-3', faction.id)?.name, 'Lanternkeepers');
     expect(
       (await worldsRef()
               .doc('world-3')
@@ -556,7 +551,14 @@ void main() {
   });
 
   group('relationships', () {
-    Future<({String worldId, String characterId, String locationId})>
+    Future<
+      ({
+        String worldId,
+        String characterId,
+        String locationId,
+        String factionId,
+      })
+    >
     seedLinkable() async {
       await seedWorld(
         id: 'world-rel',
@@ -581,12 +583,21 @@ void main() {
         description: 'Where the heir was raised.',
         createdAt: DateTime.utc(2025, 5, 3),
       );
+      await seedFaction(
+        worldId: 'world-rel',
+        factionId: 'fac-morne',
+        name: 'House Morne',
+        ideology: 'Restoration of the shard-crown.',
+        description: 'An exiled house with a claim on the silver coast.',
+        createdAt: DateTime.utc(2025, 5, 4),
+      );
       await service.initialize();
       await settleFirestore();
       return (
         worldId: 'world-rel',
         characterId: 'char-veyra',
         locationId: 'loc-karr',
+        factionId: 'fac-morne',
       );
     }
 
@@ -601,15 +612,11 @@ void main() {
       await settleFirestore();
 
       expect(
-        service
-            .characterById(ids.worldId, ids.characterId)
-            ?.locationIds,
+        service.characterById(ids.worldId, ids.characterId)?.locationIds,
         contains(ids.locationId),
       );
       expect(
-        service
-            .locationById(ids.worldId, ids.locationId)
-            ?.characterIds,
+        service.locationById(ids.worldId, ids.locationId)?.characterIds,
         contains(ids.characterId),
       );
 
@@ -634,65 +641,67 @@ void main() {
       );
     });
 
-    test('linking the same pair twice keeps a single entry on each side',
-        () async {
-      final ids = await seedLinkable();
+    test(
+      'linking the same pair twice keeps a single entry on each side',
+      () async {
+        final ids = await seedLinkable();
 
-      await service.linkCharacterAndLocation(
-        worldId: ids.worldId,
-        characterId: ids.characterId,
-        locationId: ids.locationId,
-      );
-      await settleFirestore();
-      await service.linkCharacterAndLocation(
-        worldId: ids.worldId,
-        characterId: ids.characterId,
-        locationId: ids.locationId,
-      );
-      await settleFirestore();
+        await service.linkCharacterAndLocation(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          locationId: ids.locationId,
+        );
+        await settleFirestore();
+        await service.linkCharacterAndLocation(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          locationId: ids.locationId,
+        );
+        await settleFirestore();
 
-      expect(
-        service
-            .characterById(ids.worldId, ids.characterId)
-            ?.locationIds
-            .where((id) => id == ids.locationId)
-            .length,
-        1,
-      );
-      expect(
-        service
-            .locationById(ids.worldId, ids.locationId)
-            ?.characterIds
-            .where((id) => id == ids.characterId)
-            .length,
-        1,
-      );
+        expect(
+          service
+              .characterById(ids.worldId, ids.characterId)
+              ?.locationIds
+              .where((id) => id == ids.locationId)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .locationById(ids.worldId, ids.locationId)
+              ?.characterIds
+              .where((id) => id == ids.characterId)
+              .length,
+          1,
+        );
 
-      final characterDoc = await worldsRef()
-          .doc(ids.worldId)
-          .collection('characters')
-          .doc(ids.characterId)
-          .get();
-      final locationDoc = await worldsRef()
-          .doc(ids.worldId)
-          .collection('locations')
-          .doc(ids.locationId)
-          .get();
-      expect(
-        (characterDoc.data()?['locationIds'] as List?)
-            ?.cast<String>()
-            .where((id) => id == ids.locationId)
-            .length,
-        1,
-      );
-      expect(
-        (locationDoc.data()?['characterIds'] as List?)
-            ?.cast<String>()
-            .where((id) => id == ids.characterId)
-            .length,
-        1,
-      );
-    });
+        final characterDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('characters')
+            .doc(ids.characterId)
+            .get();
+        final locationDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('locations')
+            .doc(ids.locationId)
+            .get();
+        expect(
+          (characterDoc.data()?['locationIds'] as List?)
+              ?.cast<String>()
+              .where((id) => id == ids.locationId)
+              .length,
+          1,
+        );
+        expect(
+          (locationDoc.data()?['characterIds'] as List?)
+              ?.cast<String>()
+              .where((id) => id == ids.characterId)
+              .length,
+          1,
+        );
+      },
+    );
 
     test('unlinkCharacterAndLocation clears both sides in Firestore', () async {
       final ids = await seedLinkable();
@@ -711,15 +720,11 @@ void main() {
       await settleFirestore();
 
       expect(
-        service
-            .characterById(ids.worldId, ids.characterId)
-            ?.locationIds,
+        service.characterById(ids.worldId, ids.characterId)?.locationIds,
         isEmpty,
       );
       expect(
-        service
-            .locationById(ids.worldId, ids.locationId)
-            ?.characterIds,
+        service.locationById(ids.worldId, ids.locationId)?.characterIds,
         isEmpty,
       );
 
@@ -745,13 +750,333 @@ void main() {
       );
     });
 
-    test('deleting a linked character clears the inverse on its locations',
-        () async {
+    test(
+      'deleting a linked character clears the inverse on its locations',
+      () async {
+        final ids = await seedLinkable();
+        await service.linkCharacterAndLocation(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          locationId: ids.locationId,
+        );
+        await settleFirestore();
+
+        await service.deleteCharacter(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+        );
+        await settleFirestore();
+
+        expect(
+          service.locationById(ids.worldId, ids.locationId)?.characterIds,
+          isEmpty,
+        );
+
+        final locationDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('locations')
+            .doc(ids.locationId)
+            .get();
+        expect(
+          (locationDoc.data()?['characterIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (await worldsRef()
+                  .doc(ids.worldId)
+                  .collection('characters')
+                  .doc(ids.characterId)
+                  .get())
+              .exists,
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'deleting a linked location clears the inverse on its characters',
+      () async {
+        final ids = await seedLinkable();
+        await service.linkCharacterAndLocation(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          locationId: ids.locationId,
+        );
+        await settleFirestore();
+
+        await service.deleteLocation(
+          worldId: ids.worldId,
+          locationId: ids.locationId,
+        );
+        await settleFirestore();
+
+        expect(
+          service.characterById(ids.worldId, ids.characterId)?.locationIds,
+          isEmpty,
+        );
+
+        final characterDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('characters')
+            .doc(ids.characterId)
+            .get();
+        expect(
+          (characterDoc.data()?['locationIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (await worldsRef()
+                  .doc(ids.worldId)
+                  .collection('locations')
+                  .doc(ids.locationId)
+                  .get())
+              .exists,
+          isFalse,
+        );
+      },
+    );
+
+    test('linkCharacterAndFaction writes both sides to Firestore', () async {
       final ids = await seedLinkable();
-      await service.linkCharacterAndLocation(
+
+      await service.linkCharacterAndFaction(
         worldId: ids.worldId,
         characterId: ids.characterId,
+        factionId: ids.factionId,
+      );
+      await settleFirestore();
+
+      expect(
+        service.characterById(ids.worldId, ids.characterId)?.factionIds,
+        contains(ids.factionId),
+      );
+      expect(
+        service.factionById(ids.worldId, ids.factionId)?.characterIds,
+        contains(ids.characterId),
+      );
+
+      final characterDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('characters')
+          .doc(ids.characterId)
+          .get();
+      final factionDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('factions')
+          .doc(ids.factionId)
+          .get();
+
+      expect(
+        (characterDoc.data()?['factionIds'] as List?)?.cast<String>(),
+        contains(ids.factionId),
+      );
+      expect(
+        (factionDoc.data()?['characterIds'] as List?)?.cast<String>(),
+        contains(ids.characterId),
+      );
+    });
+
+    test('linkLocationAndFaction writes both sides to Firestore', () async {
+      final ids = await seedLinkable();
+
+      await service.linkLocationAndFaction(
+        worldId: ids.worldId,
         locationId: ids.locationId,
+        factionId: ids.factionId,
+      );
+      await settleFirestore();
+
+      expect(
+        service.locationById(ids.worldId, ids.locationId)?.factionIds,
+        contains(ids.factionId),
+      );
+      expect(
+        service.factionById(ids.worldId, ids.factionId)?.locationIds,
+        contains(ids.locationId),
+      );
+
+      final locationDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('locations')
+          .doc(ids.locationId)
+          .get();
+      final factionDoc = await worldsRef()
+          .doc(ids.worldId)
+          .collection('factions')
+          .doc(ids.factionId)
+          .get();
+
+      expect(
+        (locationDoc.data()?['factionIds'] as List?)?.cast<String>(),
+        contains(ids.factionId),
+      );
+      expect(
+        (factionDoc.data()?['locationIds'] as List?)?.cast<String>(),
+        contains(ids.locationId),
+      );
+    });
+
+    test(
+      'linking faction pairs twice keeps a single entry on each side',
+      () async {
+        final ids = await seedLinkable();
+
+        await service.linkCharacterAndFaction(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+        await service.linkCharacterAndFaction(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+        await service.linkLocationAndFaction(
+          worldId: ids.worldId,
+          locationId: ids.locationId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+        await service.linkLocationAndFaction(
+          worldId: ids.worldId,
+          locationId: ids.locationId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+
+        expect(
+          service
+              .characterById(ids.worldId, ids.characterId)
+              ?.factionIds
+              .where((id) => id == ids.factionId)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .locationById(ids.worldId, ids.locationId)
+              ?.factionIds
+              .where((id) => id == ids.factionId)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .factionById(ids.worldId, ids.factionId)
+              ?.characterIds
+              .where((id) => id == ids.characterId)
+              .length,
+          1,
+        );
+        expect(
+          service
+              .factionById(ids.worldId, ids.factionId)
+              ?.locationIds
+              .where((id) => id == ids.locationId)
+              .length,
+          1,
+        );
+      },
+    );
+
+    test(
+      'unlink faction relationships clears both sides in Firestore',
+      () async {
+        final ids = await seedLinkable();
+
+        await service.linkCharacterAndFaction(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          factionId: ids.factionId,
+        );
+        await service.linkLocationAndFaction(
+          worldId: ids.worldId,
+          locationId: ids.locationId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+        await service.unlinkCharacterAndFaction(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          factionId: ids.factionId,
+        );
+        await service.unlinkLocationAndFaction(
+          worldId: ids.worldId,
+          locationId: ids.locationId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+
+        expect(
+          service.characterById(ids.worldId, ids.characterId)?.factionIds,
+          isEmpty,
+        );
+        expect(
+          service.locationById(ids.worldId, ids.locationId)?.factionIds,
+          isEmpty,
+        );
+        expect(
+          service.factionById(ids.worldId, ids.factionId)?.characterIds,
+          isEmpty,
+        );
+        expect(
+          service.factionById(ids.worldId, ids.factionId)?.locationIds,
+          isEmpty,
+        );
+
+        final characterDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('characters')
+            .doc(ids.characterId)
+            .get();
+        final locationDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('locations')
+            .doc(ids.locationId)
+            .get();
+        final factionDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('factions')
+            .doc(ids.factionId)
+            .get();
+        expect(
+          (characterDoc.data()?['factionIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (locationDoc.data()?['factionIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (factionDoc.data()?['characterIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (factionDoc.data()?['locationIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+      },
+    );
+
+    test('deleting linked entities clears faction inverse arrays', () async {
+      final ids = await seedLinkable();
+      await service.linkCharacterAndFaction(
+        worldId: ids.worldId,
+        characterId: ids.characterId,
+        factionId: ids.factionId,
+      );
+      await service.linkLocationAndFaction(
+        worldId: ids.worldId,
+        locationId: ids.locationId,
+        factionId: ids.factionId,
       );
       await settleFirestore();
 
@@ -759,46 +1084,6 @@ void main() {
         worldId: ids.worldId,
         characterId: ids.characterId,
       );
-      await settleFirestore();
-
-      expect(
-        service
-            .locationById(ids.worldId, ids.locationId)
-            ?.characterIds,
-        isEmpty,
-      );
-
-      final locationDoc = await worldsRef()
-          .doc(ids.worldId)
-          .collection('locations')
-          .doc(ids.locationId)
-          .get();
-      expect(
-        (locationDoc.data()?['characterIds'] as List?)?.cast<String>() ??
-            const <String>[],
-        isEmpty,
-      );
-      expect(
-        (await worldsRef()
-                .doc(ids.worldId)
-                .collection('characters')
-                .doc(ids.characterId)
-                .get())
-            .exists,
-        isFalse,
-      );
-    });
-
-    test('deleting a linked location clears the inverse on its characters',
-        () async {
-      final ids = await seedLinkable();
-      await service.linkCharacterAndLocation(
-        worldId: ids.worldId,
-        characterId: ids.characterId,
-        locationId: ids.locationId,
-      );
-      await settleFirestore();
-
       await service.deleteLocation(
         worldId: ids.worldId,
         locationId: ids.locationId,
@@ -806,31 +1091,93 @@ void main() {
       await settleFirestore();
 
       expect(
-        service
-            .characterById(ids.worldId, ids.characterId)
-            ?.locationIds,
+        service.factionById(ids.worldId, ids.factionId)?.characterIds,
+        isEmpty,
+      );
+      expect(
+        service.factionById(ids.worldId, ids.factionId)?.locationIds,
         isEmpty,
       );
 
-      final characterDoc = await worldsRef()
+      final factionDoc = await worldsRef()
           .doc(ids.worldId)
-          .collection('characters')
-          .doc(ids.characterId)
+          .collection('factions')
+          .doc(ids.factionId)
           .get();
       expect(
-        (characterDoc.data()?['locationIds'] as List?)?.cast<String>() ??
+        (factionDoc.data()?['characterIds'] as List?)?.cast<String>() ??
             const <String>[],
         isEmpty,
       );
       expect(
-        (await worldsRef()
-                .doc(ids.worldId)
-                .collection('locations')
-                .doc(ids.locationId)
-                .get())
-            .exists,
-        isFalse,
+        (factionDoc.data()?['locationIds'] as List?)?.cast<String>() ??
+            const <String>[],
+        isEmpty,
       );
     });
+
+    test(
+      'deleting a linked faction clears character and location refs',
+      () async {
+        final ids = await seedLinkable();
+        await service.linkCharacterAndFaction(
+          worldId: ids.worldId,
+          characterId: ids.characterId,
+          factionId: ids.factionId,
+        );
+        await service.linkLocationAndFaction(
+          worldId: ids.worldId,
+          locationId: ids.locationId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+
+        await service.deleteFaction(
+          worldId: ids.worldId,
+          factionId: ids.factionId,
+        );
+        await settleFirestore();
+
+        expect(
+          service.characterById(ids.worldId, ids.characterId)?.factionIds,
+          isEmpty,
+        );
+        expect(
+          service.locationById(ids.worldId, ids.locationId)?.factionIds,
+          isEmpty,
+        );
+        expect(service.factionById(ids.worldId, ids.factionId), isNull);
+
+        final characterDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('characters')
+            .doc(ids.characterId)
+            .get();
+        final locationDoc = await worldsRef()
+            .doc(ids.worldId)
+            .collection('locations')
+            .doc(ids.locationId)
+            .get();
+        expect(
+          (characterDoc.data()?['factionIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (locationDoc.data()?['factionIds'] as List?)?.cast<String>() ??
+              const <String>[],
+          isEmpty,
+        );
+        expect(
+          (await worldsRef()
+                  .doc(ids.worldId)
+                  .collection('factions')
+                  .doc(ids.factionId)
+                  .get())
+              .exists,
+          isFalse,
+        );
+      },
+    );
   });
 }

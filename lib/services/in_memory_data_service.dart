@@ -162,6 +162,18 @@ class InMemoryDataService extends WorldscribeDataService {
         }
       }
     }
+    final factions = _factionsByWorld[worldId];
+    if (factions != null) {
+      for (var i = 0; i < factions.length; i++) {
+        final faction = factions[i];
+        if (faction.characterIds.contains(characterId)) {
+          factions[i] = faction.copyWith(
+            characterIds: List<String>.from(faction.characterIds)
+              ..remove(characterId),
+          );
+        }
+      }
+    }
     notifyListeners();
   }
 
@@ -232,6 +244,18 @@ class InMemoryDataService extends WorldscribeDataService {
         }
       }
     }
+    final factions = _factionsByWorld[worldId];
+    if (factions != null) {
+      for (var i = 0; i < factions.length; i++) {
+        final faction = factions[i];
+        if (faction.locationIds.contains(locationId)) {
+          factions[i] = faction.copyWith(
+            locationIds: List<String>.from(faction.locationIds)
+              ..remove(locationId),
+          );
+        }
+      }
+    }
     notifyListeners();
   }
 
@@ -288,6 +312,30 @@ class InMemoryDataService extends WorldscribeDataService {
     final list = _factionsByWorld[worldId];
     if (list == null) return;
     list.removeWhere((f) => f.id == factionId);
+    final characters = _charactersByWorld[worldId];
+    if (characters != null) {
+      for (var i = 0; i < characters.length; i++) {
+        final character = characters[i];
+        if (character.factionIds.contains(factionId)) {
+          characters[i] = character.copyWith(
+            factionIds: List<String>.from(character.factionIds)
+              ..remove(factionId),
+          );
+        }
+      }
+    }
+    final locations = _locationsByWorld[worldId];
+    if (locations != null) {
+      for (var i = 0; i < locations.length; i++) {
+        final location = locations[i];
+        if (location.factionIds.contains(factionId)) {
+          locations[i] = location.copyWith(
+            factionIds: List<String>.from(location.factionIds)
+              ..remove(factionId),
+          );
+        }
+      }
+    }
     notifyListeners();
   }
 
@@ -352,6 +400,131 @@ class InMemoryDataService extends WorldscribeDataService {
     locations[li] = location.copyWith(
       characterIds: List<String>.from(location.characterIds)
         ..remove(characterId),
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> linkCharacterAndFaction({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+  }) async {
+    final character = characterById(worldId, characterId);
+    final faction = factionById(worldId, factionId);
+    if (character == null || faction == null) return;
+
+    final alreadyLinked =
+        character.factionIds.contains(factionId) &&
+        faction.characterIds.contains(characterId);
+    if (alreadyLinked) return;
+
+    final characters = _charactersByWorld[worldId]!;
+    final factions = _factionsByWorld[worldId]!;
+    final ci = characters.indexWhere((c) => c.id == characterId);
+    final fi = factions.indexWhere((f) => f.id == factionId);
+
+    characters[ci] = character.copyWith(
+      factionIds: character.factionIds.contains(factionId)
+          ? character.factionIds
+          : [...character.factionIds, factionId],
+    );
+    factions[fi] = faction.copyWith(
+      characterIds: faction.characterIds.contains(characterId)
+          ? faction.characterIds
+          : [...faction.characterIds, characterId],
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> unlinkCharacterAndFaction({
+    required String worldId,
+    required String characterId,
+    required String factionId,
+  }) async {
+    final character = characterById(worldId, characterId);
+    final faction = factionById(worldId, factionId);
+    if (character == null || faction == null) return;
+
+    final hadLink =
+        character.factionIds.contains(factionId) ||
+        faction.characterIds.contains(characterId);
+    if (!hadLink) return;
+
+    final characters = _charactersByWorld[worldId]!;
+    final factions = _factionsByWorld[worldId]!;
+    final ci = characters.indexWhere((c) => c.id == characterId);
+    final fi = factions.indexWhere((f) => f.id == factionId);
+
+    characters[ci] = character.copyWith(
+      factionIds: List<String>.from(character.factionIds)..remove(factionId),
+    );
+    factions[fi] = faction.copyWith(
+      characterIds: List<String>.from(faction.characterIds)
+        ..remove(characterId),
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> linkLocationAndFaction({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+  }) async {
+    final location = locationById(worldId, locationId);
+    final faction = factionById(worldId, factionId);
+    if (location == null || faction == null) return;
+
+    final alreadyLinked =
+        location.factionIds.contains(factionId) &&
+        faction.locationIds.contains(locationId);
+    if (alreadyLinked) return;
+
+    final locations = _locationsByWorld[worldId]!;
+    final factions = _factionsByWorld[worldId]!;
+    final li = locations.indexWhere((l) => l.id == locationId);
+    final fi = factions.indexWhere((f) => f.id == factionId);
+
+    locations[li] = location.copyWith(
+      factionIds: location.factionIds.contains(factionId)
+          ? location.factionIds
+          : [...location.factionIds, factionId],
+    );
+    factions[fi] = faction.copyWith(
+      locationIds: faction.locationIds.contains(locationId)
+          ? faction.locationIds
+          : [...faction.locationIds, locationId],
+    );
+    notifyListeners();
+  }
+
+  @override
+  Future<void> unlinkLocationAndFaction({
+    required String worldId,
+    required String locationId,
+    required String factionId,
+  }) async {
+    final location = locationById(worldId, locationId);
+    final faction = factionById(worldId, factionId);
+    if (location == null || faction == null) return;
+
+    final hadLink =
+        location.factionIds.contains(factionId) ||
+        faction.locationIds.contains(locationId);
+    if (!hadLink) return;
+
+    final locations = _locationsByWorld[worldId]!;
+    final factions = _factionsByWorld[worldId]!;
+    final li = locations.indexWhere((l) => l.id == locationId);
+    final fi = factions.indexWhere((f) => f.id == factionId);
+
+    locations[li] = location.copyWith(
+      factionIds: List<String>.from(location.factionIds)..remove(factionId),
+    );
+    factions[fi] = faction.copyWith(
+      locationIds: List<String>.from(faction.locationIds)..remove(locationId),
     );
     notifyListeners();
   }
