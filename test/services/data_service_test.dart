@@ -183,6 +183,86 @@ void main() {
     expect(callCount, greaterThanOrEqualTo(1));
   });
 
+  group('factions', () {
+    test('seeds factions for the seeded worlds', () {
+      for (final world in service.worlds) {
+        expect(service.factionsFor(world.id), isNotEmpty);
+      }
+    });
+
+    test('addFaction prepends to the right world', () async {
+      final world = service.worlds.first;
+      final before = service.factionsFor(world.id).length;
+
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'The Glass Court',
+        ideology: 'Order through ritual.',
+        description: 'A circle of seers who interpret the cracked sky.',
+      );
+
+      expect(service.factionsFor(world.id).length, before + 1);
+      expect(service.factionsFor(world.id).first.id, faction.id);
+      expect(service.factionById(world.id, faction.id)?.name, 'The Glass Court');
+    });
+
+    test('updateFaction changes the stored fields', () async {
+      final world = service.worlds.first;
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'Old Name',
+        ideology: 'Old creed',
+        description: 'A draft.',
+      );
+
+      await service.updateFaction(
+        faction.copyWith(
+          name: 'New Name',
+          ideology: 'Refined creed',
+          description: 'Now with full charter.',
+        ),
+      );
+
+      final updated = service.factionById(world.id, faction.id);
+      expect(updated?.name, 'New Name');
+      expect(updated?.ideology, 'Refined creed');
+      expect(updated?.description, 'Now with full charter.');
+    });
+
+    test('deleteFaction removes from the list', () async {
+      final world = service.worlds.first;
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'Mayfly Cabal',
+        ideology: '',
+        description: '',
+      );
+
+      await service.deleteFaction(worldId: world.id, factionId: faction.id);
+
+      expect(service.factionById(world.id, faction.id), isNull);
+    });
+
+    test('deleteWorld also clears its factions', () async {
+      final world = await service.addWorld(
+        name: 'Ephemera',
+        genre: '',
+        description: '',
+      );
+      await service.addFaction(
+        worldId: world.id,
+        name: 'Phantoms',
+        ideology: '',
+        description: '',
+      );
+
+      await service.deleteWorld(world.id);
+
+      expect(service.worldById(world.id), isNull);
+      expect(service.factionsFor(world.id), isEmpty);
+    });
+  });
+
   group('relationships', () {
     test('linkCharacterAndLocation updates both sides', () async {
       final world = service.worlds.first;

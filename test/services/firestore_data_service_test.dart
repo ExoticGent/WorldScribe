@@ -75,6 +75,26 @@ void main() {
         });
   }
 
+  Future<void> seedFaction({
+    required String worldId,
+    required String factionId,
+    required String name,
+    required String ideology,
+    required String description,
+    required DateTime createdAt,
+  }) {
+    return worldsRef()
+        .doc(worldId)
+        .collection('factions')
+        .doc(factionId)
+        .set({
+          'name': name,
+          'ideology': ideology,
+          'description': description,
+          'createdAt': Timestamp.fromDate(createdAt),
+        });
+  }
+
   setUp(() {
     firestore = FakeFirebaseFirestore();
     service = FirestoreDataService(firestore: firestore, userId: userId);
@@ -234,6 +254,24 @@ void main() {
         isTrue,
       );
 
+      final faction = await service.addFaction(
+        worldId: world.id,
+        name: 'Beaconwatch',
+        ideology: 'Light kept against the storm.',
+        description: 'A volunteer order tending the rebuilt beacons.',
+      );
+      await settleFirestore();
+
+      expect(
+        (await worldsRef()
+                .doc(world.id)
+                .collection('factions')
+                .doc(faction.id)
+                .get())
+            .exists,
+        isTrue,
+      );
+
       await service.deleteWorld(world.id);
       await settleFirestore();
 
@@ -245,6 +283,10 @@ void main() {
       );
       expect(
         (await worldsRef().doc(world.id).collection('locations').get()).docs,
+        isEmpty,
+      );
+      expect(
+        (await worldsRef().doc(world.id).collection('factions').get()).docs,
         isEmpty,
       );
     },
@@ -370,6 +412,143 @@ void main() {
               .doc('world-2')
               .collection('locations')
               .doc(location.id)
+              .get())
+          .exists,
+      isFalse,
+    );
+  });
+
+  test('initialize loads seeded factions in created order', () async {
+    await seedWorld(
+      id: 'world-fac',
+      name: 'Glass Court',
+      genre: 'Fantasy',
+      description: 'A court of seers under a cracked sky.',
+      createdAt: DateTime.utc(2025, 6, 1),
+    );
+    await seedFaction(
+      worldId: 'world-fac',
+      factionId: 'fac-older',
+      name: 'The Old Reading',
+      ideology: 'Doctrine carved in obsidian.',
+      description: 'The original interpreters of the cracks.',
+      createdAt: DateTime.utc(2025, 6, 2),
+    );
+    await seedFaction(
+      worldId: 'world-fac',
+      factionId: 'fac-newer',
+      name: 'The New Reading',
+      ideology: 'Living scripture, reread each dawn.',
+      description: 'A reformist circle that broke from the Old Reading.',
+      createdAt: DateTime.utc(2025, 6, 3),
+    );
+
+    await service.initialize();
+    await settleFirestore();
+
+    expect(
+      service.factionsFor('world-fac').map((faction) => faction.id),
+      ['fac-newer', 'fac-older'],
+    );
+    expect(service.factionById('world-fac', 'fac-newer')?.name, 'The New Reading');
+  });
+
+  test('live snapshots update the local cache for remote faction writes',
+      () async {
+    await service.initialize();
+
+    await seedWorld(
+      id: 'world-fac-remote',
+      name: 'Mire Marches',
+      genre: 'Dark fantasy',
+      description: 'Sunken halls below the river plain.',
+      createdAt: DateTime.utc(2025, 6, 10),
+    );
+    await settleFirestore();
+
+    await seedFaction(
+      worldId: 'world-fac-remote',
+      factionId: 'fac-remote',
+      name: 'The Drowned Hand',
+      ideology: 'Tribute to the river.',
+      description: 'Smugglers and reed-walkers loyal to the flood.',
+      createdAt: DateTime.utc(2025, 6, 11),
+    );
+    await settleFirestore();
+
+    expect(
+      service.factionById('world-fac-remote', 'fac-remote')?.name,
+      'The Drowned Hand',
+    );
+    expect(
+      service.factionById('world-fac-remote', 'fac-remote')?.ideology,
+      'Tribute to the river.',
+    );
+  });
+
+  test('faction CRUD persists to Firestore', () async {
+    await seedWorld(
+      id: 'world-3',
+      name: 'Ember Coast',
+      genre: 'Fantasy',
+      description: 'A coastline lit by drift-fire.',
+      createdAt: DateTime.utc(2025, 7, 1),
+    );
+
+    await service.initialize();
+    await settleFirestore();
+
+    final faction = await service.addFaction(
+      worldId: 'world-3',
+      name: 'Lanternkeepers',
+      ideology: 'Light at any cost.',
+      description: 'Hereditary guardians of the coastal lanterns.',
+    );
+    await settleFirestore();
+
+    expect(
+      service.factionById('world-3', faction.id)?.name,
+      'Lanternkeepers',
+    );
+    expect(
+      (await worldsRef()
+              .doc('world-3')
+              .collection('factions')
+              .doc(faction.id)
+              .get())
+          .data()?['ideology'],
+      'Light at any cost.',
+    );
+
+    await service.updateFaction(
+      faction.copyWith(
+        name: 'Lanternkeepers Reformed',
+        ideology: 'Light, but only by oath.',
+        description: 'A reformed charter signed at the Glass Beacon.',
+      ),
+    );
+    await settleFirestore();
+
+    final updatedFactionDoc = await worldsRef()
+        .doc('world-3')
+        .collection('factions')
+        .doc(faction.id)
+        .get();
+    expect(
+      service.factionById('world-3', faction.id)?.name,
+      'Lanternkeepers Reformed',
+    );
+    expect(updatedFactionDoc.data()?['ideology'], 'Light, but only by oath.');
+
+    await service.deleteFaction(worldId: 'world-3', factionId: faction.id);
+    await settleFirestore();
+
+    expect(service.factionById('world-3', faction.id), isNull);
+    expect(
+      (await worldsRef()
+              .doc('world-3')
+              .collection('factions')
+              .doc(faction.id)
               .get())
           .exists,
       isFalse,

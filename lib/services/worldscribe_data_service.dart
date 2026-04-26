@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/character.dart';
+import '../models/faction.dart';
 import '../models/location.dart';
 import '../models/world.dart';
 
@@ -75,6 +76,26 @@ abstract class WorldscribeDataService extends ChangeNotifier {
   Future<void> deleteLocation({
     required String worldId,
     required String locationId,
+  });
+
+  // -- Factions -------------------------------------------------------------
+
+  List<Faction> factionsFor(String worldId);
+
+  Faction? factionById(String worldId, String factionId);
+
+  Future<Faction> addFaction({
+    required String worldId,
+    required String name,
+    required String ideology,
+    required String description,
+  });
+
+  Future<void> updateFaction(Faction updated);
+
+  Future<void> deleteFaction({
+    required String worldId,
+    required String factionId,
   });
 
   // -- Relationships --------------------------------------------------------

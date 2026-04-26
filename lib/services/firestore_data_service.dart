@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/character.dart';
+import '../models/faction.dart';
 import '../models/location.dart';
 import '../models/world.dart';
 import 'worldscribe_data_service.dart';
@@ -25,10 +26,13 @@ class FirestoreDataService extends WorldscribeDataService {
 
   final Map<String, List<Character>> _charactersByWorld = {};
   final Map<String, List<Location>> _locationsByWorld = {};
+  final Map<String, List<Faction>> _factionsByWorld = {};
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
   _characterSubs = {};
   final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
   _locationSubs = {};
+  final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+  _factionSubs = {};
 
   List<World> _worlds = const [];
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _worldsSub;
@@ -82,6 +86,18 @@ class FirestoreDataService extends WorldscribeDataService {
   }
 
   @override
+  List<Faction> factionsFor(String worldId) =>
+      List.unmodifiable(_factionsByWorld[worldId] ?? const []);
+
+  @override
+  Faction? factionById(String worldId, String factionId) {
+    for (final faction in _factionsByWorld[worldId] ?? const <Faction>[]) {
+      if (faction.id == factionId) return faction;
+    }
+    return null;
+  }
+
+  @override
   Future<void> initialize() => _initializeFuture ??= _initializeInternal();
 
   Future<void> _initializeInternal() {
@@ -100,6 +116,7 @@ class FirestoreDataService extends WorldscribeDataService {
             final worldIds = _worlds.map((world) => world.id).toSet();
             _syncCharacterSubscriptions(worldIds);
             _syncLocationSubscriptions(worldIds);
+            _syncFactionSubscriptions(worldIds);
             _isLoading = false;
             _errorMessage = null;
             notifyListeners();
@@ -140,6 +157,7 @@ class FirestoreDataService extends WorldscribeDataService {
     _worlds = [world, ..._worlds];
     _charactersByWorld.putIfAbsent(world.id, () => []);
     _locationsByWorld.putIfAbsent(world.id, () => []);
+    _factionsByWorld.putIfAbsent(world.id, () => []);
     _errorMessage = null;
     notifyListeners();
 
@@ -152,6 +170,7 @@ class FirestoreDataService extends WorldscribeDataService {
           .toList(growable: false);
       _charactersByWorld.remove(world.id);
       _locationsByWorld.remove(world.id);
+      _factionsByWorld.remove(world.id);
       _errorMessage = 'Could not create the world in Firebase.';
       notifyListeners();
       rethrow;
@@ -192,16 +211,20 @@ class FirestoreDataService extends WorldscribeDataService {
     final removedWorld = _worlds[index];
     final removedCharacters = _charactersByWorld[id];
     final removedLocations = _locationsByWorld[id];
+    final removedFactions = _factionsByWorld[id];
     final removedSubscription = _characterSubs.remove(id);
     final removedLocationSubscription = _locationSubs.remove(id);
+    final removedFactionSubscription = _factionSubs.remove(id);
 
     final nextWorlds = List<World>.from(_worlds)..removeAt(index);
     _worlds = List.unmodifiable(nextWorlds);
     _charactersByWorld.remove(id);
     _locationsByWorld.remove(id);
+    _factionsByWorld.remove(id);
     _errorMessage = null;
     removedSubscription?.cancel();
     removedLocationSubscription?.cancel();
+    removedFactionSubscription?.cancel();
     notifyListeners();
 
     try {
@@ -209,11 +232,15 @@ class FirestoreDataService extends WorldscribeDataService {
       final worldRef = _worldsRef.doc(id);
       final charactersSnapshot = await worldRef.collection('characters').get();
       final locationsSnapshot = await worldRef.collection('locations').get();
+      final factionsSnapshot = await worldRef.collection('factions').get();
 
       for (final doc in charactersSnapshot.docs) {
         batch.delete(doc.reference);
       }
       for (final doc in locationsSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      for (final doc in factionsSnapshot.docs) {
         batch.delete(doc.reference);
       }
       batch.delete(worldRef);
@@ -228,9 +255,13 @@ class FirestoreDataService extends WorldscribeDataService {
       if (removedLocations != null) {
         _locationsByWorld[id] = removedLocations;
       }
+      if (removedFactions != null) {
+        _factionsByWorld[id] = removedFactions;
+      }
       if (worldById(id) != null) {
         _characterSubs[id] = _subscribeToCharacters(id);
         _locationSubs[id] = _subscribeToLocations(id);
+        _factionSubs[id] = _subscribeToFactions(id);
       }
       _errorMessage = 'Could not delete the world from Firebase.';
       notifyListeners();
@@ -515,6 +546,105 @@ class FirestoreDataService extends WorldscribeDataService {
     }
   }
 
+  @override
+  Future<Faction> addFaction({
+    required String worldId,
+    required String name,
+    required String ideology,
+    required String description,
+  }) async {
+    final doc = _worldsRef.doc(worldId).collection('factions').doc();
+    final faction = Faction(
+      id: doc.id,
+      worldId: worldId,
+      name: name.trim(),
+      ideology: ideology.trim(),
+      description: description.trim(),
+      createdAt: DateTime.now().toUtc(),
+    );
+
+    final previous = _factionsByWorld[worldId] ?? const <Faction>[];
+    _factionsByWorld[worldId] = [faction, ...previous];
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await doc.set(_factionToFirestore(faction));
+      return faction;
+    } catch (_) {
+      _factionsByWorld[worldId] = previous;
+      _errorMessage = 'Could not save the faction in Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> updateFaction(Faction updated) async {
+    final factions = _factionsByWorld[updated.worldId];
+    if (factions == null) return;
+    final index = factions.indexWhere((faction) => faction.id == updated.id);
+    if (index == -1) return;
+
+    final previous = factions[index];
+    final nextFactions = List<Faction>.from(factions);
+    nextFactions[index] = updated;
+    _factionsByWorld[updated.worldId] = nextFactions;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _worldsRef
+          .doc(updated.worldId)
+          .collection('factions')
+          .doc(updated.id)
+          .set(_factionToFirestore(updated), SetOptions(merge: true));
+    } catch (_) {
+      final rollback = List<Faction>.from(
+        _factionsByWorld[updated.worldId] ?? const <Faction>[],
+      );
+      rollback[index] = previous;
+      _factionsByWorld[updated.worldId] = rollback;
+      _errorMessage = 'Could not update the faction in Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> deleteFaction({
+    required String worldId,
+    required String factionId,
+  }) async {
+    final factions = _factionsByWorld[worldId];
+    if (factions == null) return;
+    final index = factions.indexWhere((faction) => faction.id == factionId);
+    if (index == -1) return;
+
+    final removed = factions[index];
+    final nextFactions = List<Faction>.from(factions)..removeAt(index);
+    _factionsByWorld[worldId] = nextFactions;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _worldsRef
+          .doc(worldId)
+          .collection('factions')
+          .doc(factionId)
+          .delete();
+    } catch (_) {
+      final rollback = List<Faction>.from(
+        _factionsByWorld[worldId] ?? const <Faction>[],
+      );
+      rollback.insert(index, removed);
+      _factionsByWorld[worldId] = rollback;
+      _errorMessage = 'Could not delete the faction from Firebase.';
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   // -- Relationships --------------------------------------------------------
 
   @override
@@ -642,6 +772,10 @@ class FirestoreDataService extends WorldscribeDataService {
       sub.cancel();
     }
     _locationSubs.clear();
+    for (final sub in _factionSubs.values) {
+      sub.cancel();
+    }
+    _factionSubs.clear();
     super.dispose();
   }
 
@@ -670,6 +804,20 @@ class FirestoreDataService extends WorldscribeDataService {
     for (final worldId in worldIds.difference(activeWorldIds)) {
       _locationsByWorld.putIfAbsent(worldId, () => []);
       _locationSubs[worldId] = _subscribeToLocations(worldId);
+    }
+  }
+
+  void _syncFactionSubscriptions(Set<String> worldIds) {
+    final activeWorldIds = _factionSubs.keys.toSet();
+
+    for (final removedWorldId in activeWorldIds.difference(worldIds)) {
+      _factionSubs.remove(removedWorldId)?.cancel();
+      _factionsByWorld.remove(removedWorldId);
+    }
+
+    for (final worldId in worldIds.difference(activeWorldIds)) {
+      _factionsByWorld.putIfAbsent(worldId, () => []);
+      _factionSubs[worldId] = _subscribeToFactions(worldId);
     }
   }
 
@@ -722,6 +870,31 @@ class FirestoreDataService extends WorldscribeDataService {
         );
   }
 
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>> _subscribeToFactions(
+    String worldId,
+  ) {
+    return _worldsRef
+        .doc(worldId)
+        .collection('factions')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            _factionsByWorld[worldId] = snapshot.docs
+                .map((doc) => _factionFromDoc(doc, worldId))
+                .toList(growable: false);
+            _errorMessage = null;
+            notifyListeners();
+          },
+          onError: (Object error, StackTrace stackTrace) {
+            debugPrint('Firestore factions stream error: $error');
+            debugPrintStack(stackTrace: stackTrace);
+            _errorMessage = 'Could not load some factions from Firebase.';
+            notifyListeners();
+          },
+        );
+  }
+
   World _worldFromDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data();
     return World(
@@ -767,6 +940,21 @@ class FirestoreDataService extends WorldscribeDataService {
     );
   }
 
+  Faction _factionFromDoc(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+    String worldId,
+  ) {
+    final data = doc.data();
+    return Faction(
+      id: doc.id,
+      worldId: worldId,
+      name: data['name'] as String? ?? '',
+      ideology: data['ideology'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      createdAt: _readDate(data['createdAt']),
+    );
+  }
+
   Map<String, dynamic> _worldToFirestore(World world) => {
     'name': world.name,
     'genre': world.genre,
@@ -788,6 +976,13 @@ class FirestoreDataService extends WorldscribeDataService {
     'description': location.description,
     'createdAt': Timestamp.fromDate(location.createdAt),
     'characterIds': location.characterIds,
+  };
+
+  Map<String, dynamic> _factionToFirestore(Faction faction) => {
+    'name': faction.name,
+    'ideology': faction.ideology,
+    'description': faction.description,
+    'createdAt': Timestamp.fromDate(faction.createdAt),
   };
 
   DateTime _readDate(Object? value) {
