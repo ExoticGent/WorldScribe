@@ -400,6 +400,185 @@ void main() {
   });
 
   testWidgets(
+    'Link a location from Character Detail surfaces it and persists the link',
+    (tester) async {
+      final world = InMemoryDataService.instance.worlds.first;
+      final character = InMemoryDataService.instance
+          .charactersFor(world.id)
+          .first;
+      final location = await InMemoryDataService.instance.addLocation(
+        worldId: world.id,
+        name: 'The Salt Terraces',
+        type: 'Coastline',
+        description: '',
+      );
+
+      await tester.pumpWidget(
+        _appAtRoute(
+          AppRoutes.characterDetail,
+          arguments: CharacterRouteArgs(
+            worldId: world.id,
+            characterId: character.id,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Empty linked-locations panel is shown by default.
+      expect(find.text('LINKED LOCATIONS'), findsOneWidget);
+      expect(find.textContaining('No locations linked yet'), findsOneWidget);
+
+      // Open the picker via the "Link a location" action button.
+      await tester.tap(find.widgetWithText(TextButton, 'Link a location'));
+      await tester.pumpAndSettle();
+
+      // Pick the only available location.
+      await tester.tap(find.text('The Salt Terraces'));
+      await tester.pumpAndSettle();
+
+      // Linked section now lists it on both UI and data layer.
+      expect(find.text('The Salt Terraces'), findsOneWidget);
+      expect(
+        InMemoryDataService.instance
+            .characterById(world.id, character.id)
+            ?.locationIds,
+        contains(location.id),
+      );
+      expect(
+        InMemoryDataService.instance
+            .locationById(world.id, location.id)
+            ?.characterIds,
+        contains(character.id),
+      );
+
+      // Tapping the unlink icon removes the link from both sides.
+      await tester.tap(find.byIcon(Icons.link_off));
+      await tester.pumpAndSettle();
+
+      expect(
+        InMemoryDataService.instance
+            .characterById(world.id, character.id)
+            ?.locationIds,
+        isEmpty,
+      );
+      expect(
+        InMemoryDataService.instance
+            .locationById(world.id, location.id)
+            ?.characterIds,
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'Link a character from Location Detail surfaces it and persists the link',
+    (tester) async {
+      final world = InMemoryDataService.instance.worlds.first;
+      final character = InMemoryDataService.instance
+          .charactersFor(world.id)
+          .first;
+      final location = await InMemoryDataService.instance.addLocation(
+        worldId: world.id,
+        name: 'The Salt Terraces',
+        type: 'Coastline',
+        description: '',
+      );
+
+      await tester.pumpWidget(
+        _appAtRoute(
+          AppRoutes.locationDetail,
+          arguments: LocationRouteArgs(
+            worldId: world.id,
+            locationId: location.id,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('LINKED CHARACTERS'), findsOneWidget);
+      expect(find.textContaining('No characters linked yet'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Link a character'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(character.name));
+      await tester.pumpAndSettle();
+
+      expect(find.text(character.name), findsWidgets);
+      expect(
+        InMemoryDataService.instance
+            .locationById(world.id, location.id)
+            ?.characterIds,
+        contains(character.id),
+      );
+
+      await tester.tap(find.byIcon(Icons.link_off));
+      await tester.pumpAndSettle();
+
+      expect(
+        InMemoryDataService.instance
+            .locationById(world.id, location.id)
+            ?.characterIds,
+        isEmpty,
+      );
+      expect(
+        InMemoryDataService.instance
+            .characterById(world.id, character.id)
+            ?.locationIds,
+        isEmpty,
+      );
+    },
+  );
+
+  testWidgets(
+    'Link picker on Character Detail hides locations already linked',
+    (tester) async {
+      final world = InMemoryDataService.instance.worlds.first;
+      final character = InMemoryDataService.instance
+          .charactersFor(world.id)
+          .first;
+      final linked = await InMemoryDataService.instance.addLocation(
+        worldId: world.id,
+        name: 'The Salt Terraces',
+        type: 'Coastline',
+        description: '',
+      );
+      final available = await InMemoryDataService.instance.addLocation(
+        worldId: world.id,
+        name: 'The Glass Spire',
+        type: 'Watchtower',
+        description: '',
+      );
+      await InMemoryDataService.instance.linkCharacterAndLocation(
+        worldId: world.id,
+        characterId: character.id,
+        locationId: linked.id,
+      );
+
+      await tester.pumpWidget(
+        _appAtRoute(
+          AppRoutes.characterDetail,
+          arguments: CharacterRouteArgs(
+            worldId: world.id,
+            characterId: character.id,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(TextButton, 'Link a location'));
+      await tester.pumpAndSettle();
+
+      // Picker only offers the not-yet-linked location.
+      expect(find.text(available.name), findsOneWidget);
+      // The already-linked one shows in the linked-section behind the
+      // sheet but never duplicates as a picker option.
+      final salt = find.text(linked.name);
+      expect(salt, findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'Back from Create World with no edits pops without prompting',
     (tester) async {
       await tester.pumpWidget(_appWithStack(top: AppRoutes.createWorld));

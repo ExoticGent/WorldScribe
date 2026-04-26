@@ -122,6 +122,28 @@ class AppStrings {
   static const String deleteCharacterFailed =
       'Could not delete the character. Try again.';
 
+  // Relationships (links between characters and locations)
+  static const String linkedLocationsLabel = 'Linked locations';
+  static const String linkedCharactersLabel = 'Linked characters';
+  static const String linkLocationAction = 'Link a location';
+  static const String linkCharacterAction = 'Link a character';
+  static const String linkLocationTitle = 'Link a location';
+  static const String linkCharacterTitle = 'Link a character';
+  static const String noLocationsToLink =
+      'All locations in this world are already linked.';
+  static const String noCharactersToLink =
+      'All characters in this world are already linked.';
+  static const String noLocationsYet =
+      'Add a location to this world to link it.';
+  static const String noCharactersYet =
+      'Add a character to this world to link it.';
+  static const String linkFailed =
+      'Could not save the link. Try again.';
+  static const String unlinkFailed =
+      'Could not remove the link. Try again.';
+  static const String unlinkLocationTooltip = 'Unlink location';
+  static const String unlinkCharacterTooltip = 'Unlink character';
+
   // Validation
   static const String requiredField = 'Required';
 

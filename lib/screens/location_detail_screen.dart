@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_routes.dart';
 import '../core/constants/app_strings.dart';
+import '../core/constants/route_args.dart';
 import '../core/theme/app_colors.dart';
+import '../models/character.dart';
 import '../models/location.dart';
 import '../services/service_locator.dart';
 import '../widgets/add_location_sheet.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/entity_picker_sheet.dart';
+import '../widgets/linked_entities_section.dart';
 import '../widgets/loading_state.dart';
 
 /// Detail view for a single location. Mirrors [CharacterDetailScreen]
@@ -48,6 +53,65 @@ class LocationDetailScreen extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text(AppStrings.deleteLocationFailed)),
+      );
+    }
+  }
+
+  Future<void> _openLinkPicker(
+    BuildContext context, {
+    required List<Character> available,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final hasCharactersInWorld =
+        dataService.charactersFor(worldId).isNotEmpty;
+    final picked = await EntityPickerSheet.show(
+      context,
+      title: AppStrings.linkCharacterTitle,
+      emptyHint: hasCharactersInWorld
+          ? AppStrings.noCharactersToLink
+          : AppStrings.noCharactersYet,
+      emptyIcon: Icons.person_outline,
+      defaultIcon: Icons.person_outline,
+      options: available
+          .map(
+            (c) => EntityPickOption(
+              id: c.id,
+              title: c.name,
+              subtitle: c.role,
+              icon: Icons.person_outline,
+            ),
+          )
+          .toList(growable: false),
+    );
+    if (picked == null) return;
+
+    try {
+      await dataService.linkCharacterAndLocation(
+        worldId: worldId,
+        characterId: picked,
+        locationId: locationId,
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.linkFailed)),
+      );
+    }
+  }
+
+  Future<void> _unlinkCharacter(
+    BuildContext context,
+    String characterId,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await dataService.unlinkCharacterAndLocation(
+        worldId: worldId,
+        characterId: characterId,
+        locationId: locationId,
+      );
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text(AppStrings.unlinkFailed)),
       );
     }
   }
@@ -159,6 +223,29 @@ class LocationDetailScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 18),
                       ],
+                      LinkedEntitiesSection(
+                        label: AppStrings.linkedCharactersLabel,
+                        addLabel: AppStrings.linkCharacterAction,
+                        emptyHint:
+                            'No characters linked yet. Link one to place '
+                            'them at this location.',
+                        unlinkTooltip: AppStrings.unlinkCharacterTooltip,
+                        defaultIcon: Icons.person_outline,
+                        linked: _linkedCharacters(location),
+                        onTap: (id) => Navigator.of(context).pushNamed(
+                          AppRoutes.characterDetail,
+                          arguments: CharacterRouteArgs(
+                            worldId: worldId,
+                            characterId: id,
+                          ),
+                        ),
+                        onUnlink: (id) => _unlinkCharacter(context, id),
+                        onAdd: () => _openLinkPicker(
+                          context,
+                          available: _availableCharacters(location),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
                       const _SectionLabel(label: 'Scribed'),
                       const SizedBox(height: 6),
                       _Panel(
@@ -194,6 +281,34 @@ class LocationDetailScreen extends StatelessWidget {
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  /// Characters currently linked to this location, in dashboard order.
+  /// Drops dangling ids defensively in case the cascade hasn't yet
+  /// caught up.
+  List<EntityPickOption> _linkedCharacters(Location location) {
+    final ids = location.characterIds.toSet();
+    if (ids.isEmpty) return const [];
+    return [
+      for (final c in dataService.charactersFor(worldId))
+        if (ids.contains(c.id))
+          EntityPickOption(
+            id: c.id,
+            title: c.name,
+            subtitle: c.role,
+            icon: Icons.person_outline,
+          ),
+    ];
+  }
+
+  /// Characters in the same world that aren't already linked — i.e. the
+  /// valid choices for the picker sheet.
+  List<Character> _availableCharacters(Location location) {
+    final linked = location.characterIds.toSet();
+    return [
+      for (final c in dataService.charactersFor(worldId))
+        if (!linked.contains(c.id)) c,
+    ];
   }
 }
 

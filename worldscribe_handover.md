@@ -55,6 +55,11 @@ App + UX:
 - World create/edit/delete
 - Character add/edit/delete + character detail screen
 - Location add/edit/delete + location detail screen
+- Character ↔ location linking (M7b) — character detail shows a
+  "Linked locations" section, location detail shows "Linked characters".
+  Tap a row to navigate to the linked entity, tap the unlink icon to
+  remove the link, or use the action button to open a picker that lists
+  only the unlinked entities in the world.
 - AI Forge bottom sheet (character generation only, one entity at a time)
 - Loading and error states for data-backed screens
 
@@ -78,6 +83,17 @@ Foundation hardening (shared patterns the rest of the app builds on):
   sheet handles both flows so create/edit visuals stay in sync.
 - Centralized strings — `AppStrings` holds every user-facing label so
   copy changes are one-line edits.
+- `EntityPickerSheet` — generic modal-bottom-sheet picker. Takes a
+  pre-filtered list of `EntityPickOption`s (id + title + optional
+  subtitle/icon) and returns the chosen id. Used by character_detail and
+  location_detail today; built generically so the next entity types
+  (factions, lore) can drop straight into the same picker without
+  inventing a second one.
+- `LinkedEntitiesSection` — drop-in widget for "Linked X" sections on
+  detail screens. Renders the linked rows (tap to navigate, tap the
+  link-off icon to unlink), an empty hint, and a "Link a Y" action
+  button that opens an `EntityPickerSheet`. Presentational only — the
+  parent owns the data-service calls.
 
 Backend + data layer:
 
@@ -120,7 +136,7 @@ Firebase integration:
 - Cloud Functions scaffold (`functions/src/index.ts`) for the
   `generateCharacter` callable
 
-Tests + quality gates (64 passing as of this handoff):
+Tests + quality gates (67 passing as of this handoff):
 
 - `flutter analyze` clean
 - `flutter test` — all green
@@ -131,7 +147,9 @@ Test files:
 - `test/widget_test.dart` — main MVP flow coverage (splash → home,
   seeded worlds, world CRUD, AI Forge with fake service, add character,
   delete character, add location, edit character/location, discard-
-  changes prompts on world / character / location forms)
+  changes prompts on world / character / location forms, linking and
+  unlinking through the entity picker on both character_detail and
+  location_detail, and picker filtering of already-linked entities)
 - `test/integration/firestore_app_test.dart` — end-to-end smoke test
   driving the real `WorldScribeApp` widget through a `FirestoreDataService`
   backed by `fake_cloud_firestore`. Catches breakage at the UI ↔
@@ -167,8 +185,6 @@ Manual device smoke test:
 - Live Gemini secret + Function deployment (intentionally postponed —
   needs Blaze billing on `worldscribe-9c753`; see "AI Forge live
   deployment" below)
-- Relationship UI (M7b) — the link/unlink primitive ships in M7a, but
-  the character/location detail screens don't surface a picker yet
 - Faction system, lore editor, broader AI Forge (locations, lore,
   factions all still TODO)
 - Permanent (non-anonymous) sign-in flow
@@ -221,6 +237,8 @@ lib/
     confirm_dialog.dart                 # ConfirmDialog.show
     dashboard_tile.dart
     empty_state.dart
+    entity_picker_sheet.dart            # generic link picker (M7b)
+    linked_entities_section.dart        # detail-screen linked-list (M7b)
     loading_state.dart
     location_card.dart
     world_card.dart
@@ -412,29 +430,24 @@ When ready:
 
 Foreground (good next milestones — each fits the small-milestone rule):
 
-1. **Relationship UI (M7b)** — surface the M7a link primitive. Build a
-   generic `EntityPickerSheet` that shows a filterable list of one
-   entity type for the current world; from `character_detail_screen.dart`
-   you pick locations to link/unlink, and from `location_detail_screen.dart`
-   you pick characters. Each detail screen grows a "Linked locations" /
-   "Linked characters" section with tap-to-unlink. Reuse the existing
-   form-pattern conventions; this should not introduce a new pattern.
-2. **Faction system** (model + screen + dual-mode add/edit sheet,
+1. **Faction system** (model + screen + dual-mode add/edit sheet,
    following the existing form pattern). Mirror the Location flow:
    list screen → detail screen → add/edit sheet → delete via
-   `ConfirmDialog`. Lean on M7a's link primitive: characters belong to
-   factions, locations are controlled by factions — same `factionIds` /
-   `characterIds` / `locationIds` denormalization.
-3. **Lore notes** (free-form long-text entries scoped to a world).
+   `ConfirmDialog`. Lean on the M7 link primitive — characters belong to
+   factions, locations are controlled by factions — using the same
+   denormalized typed `factionIds` / `characterIds` / `locationIds`
+   shape. Re-use `EntityPickerSheet` and `LinkedEntitiesSection` for
+   the linking UI.
+2. **Lore notes** (free-form long-text entries scoped to a world).
    Same shape as factions but more description-heavy. Mentions of any
    other entity flow through the M7b picker.
-4. **AI Forge expansion** — extend the `generateCharacter` callable
+3. **AI Forge expansion** — extend the `generateCharacter` callable
    shape to also support locations and lore, with the UI choosing
    which entity to forge.
-5. **Native device smoke test** — run create/edit/delete world,
+4. **Native device smoke test** — run create/edit/delete world,
    character, and location flows against live Firestore on Android +
    iOS, confirm no fallback to the mock store.
-6. **Sign-in flow** — replace anonymous-only with email/Google sign-in,
+5. **Sign-in flow** — replace anonymous-only with email/Google sign-in,
    then revisit whether to disable Anonymous Auth.
 
 Background (quality / housekeeping):
@@ -481,14 +494,18 @@ When the project flips to Blaze:
 
 - Current date for this handoff: 2026-04-25.
 - Last shipped milestones (most recent first):
+  - Relationship UI — generic `EntityPickerSheet` and
+    `LinkedEntitiesSection`, "Linked locations" on character detail and
+    "Linked characters" on location detail, tap-to-navigate, tap-to-
+    unlink, picker filters out already-linked entities (M7b)
   - Relationship data layer — bidirectional typed refs on Character /
     Location, atomic both-sides link/unlink primitive on the data service,
-    cascade-delete on both ends, 10 new tests (M7a)
+    cascade-delete on both ends, 10 new tests (M7a, `2c98446`)
   - Build verification + UI ↔ Firestore integration test + device
-    smoke checklist (M6)
+    smoke checklist (M6, `5fb496d`)
   - PopScope discard-changes guard across all forms (`620748c`)
   - Centralized destructive confirmations via `ConfirmDialog` (`d06d743`)
   - Input length caps + centralized form validators (`252d548`)
   - Character edit flow + unified detail scaffolding (`93ab7b9`)
   - Location detail screen with edit + delete (`a792a51`)
-- 64 tests passing at handoff.
+- 67 tests passing at handoff.
