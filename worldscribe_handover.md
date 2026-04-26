@@ -614,6 +614,14 @@ When the project flips to Blaze:
 ## Notes
 
 - Current date for this handoff: 2026-04-26.
+- Obsidian vault mirror: this handover is mirrored as a set of linked
+  notes in the Obsidian vault at
+  `C:\Users\Eammo\Documents\Worldscribe obsidian\WorldScribe\`. Start
+  at `WorldScribe Index.md`. Refresh the vault notes when a milestone
+  lands so the two stay in sync. The vault also carries
+  `Obsidian Vault Skill.md` and `Caveman Mode Skill.md` mirrors of the
+  skill files at `C:\Users\Eammo\Documents\Worldscribe\` (source files
+  remain the source of truth).
 - Last shipped milestones (most recent first):
   - Global search — shared `AppSearchField`, Home world filtering by
     name / genre / description, dashboard search across cached
